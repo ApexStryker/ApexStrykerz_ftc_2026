@@ -45,12 +45,13 @@ public class StraferTeleOp extends LinearOpMode {
         backLeft   = hardwareMap.get(DcMotor.class, "back_left");
         backRight  = hardwareMap.get(DcMotor.class, "back_right");
 
-        // On the Strafer V5 the left and right motors are mirror images of each other,
-        // so one side is reversed. Front and back motors on the same side match.
-        // Test: put the robot on blocks, push the left stick forward, and watch each wheel.
+        // These directions were found by testing on our robot (Sept 2026). The Strafer V5
+        // drives each wheel through bevel gears, so the pattern is not the usual
+        // "reverse one side". If a motor or wheel is rebuilt, retest: put the robot on
+        // blocks, push the left stick forward, and watch each wheel.
         //   - All four wheels spin backward  -> swap FORWARD/REVERSE on all four lines.
         //   - One wheel spins the wrong way  -> swap only that wheel.
-        frontLeft.setDirection(DcMotor.Direction.REVERSE);
+        frontLeft.setDirection(DcMotor.Direction.FORWARD);
         backLeft.setDirection(DcMotor.Direction.REVERSE);
         frontRight.setDirection(DcMotor.Direction.FORWARD);
         backRight.setDirection(DcMotor.Direction.FORWARD);
