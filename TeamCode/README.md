@@ -6,6 +6,9 @@ with a gamepad. The whole program is one file:
 It is shorter than you think. Read this page first, then open the file. You will
 recognize everything.
 
+Prefer a single page you can open anywhere, even without internet? Open
+[`docs/StraferTeleOp.html`](docs/StraferTeleOp.html) in any browser. It is this same guide with all the pictures built in.
+
 > **Quick facts**
 >
 > | | |
