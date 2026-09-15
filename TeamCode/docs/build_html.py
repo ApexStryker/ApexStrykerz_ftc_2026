@@ -159,8 +159,14 @@ def convert(md):
             while i < len(lines):
                 t = lines[i].strip()
                 mm = re.match(r"^(\d+)\.\s+(.*)", t) if ordered else re.match(r"^[-*]\s+(.*)", t)
-                if not mm: break
-                items.append(mm.group(2) if ordered else mm.group(1)); i += 1
+                if mm:
+                    items.append(mm.group(2) if ordered else mm.group(1)); i += 1
+                    continue
+                # a wrapped continuation line belongs to the previous item
+                if items and t and not re.match(r"^(```|#|\||>|---|!\[|\d+\.\s|[-*]\s)", t):
+                    items[-1] += " " + t; i += 1
+                    continue
+                break
             out.append(f"<{tag}{start}>" + "".join(f"<li>{inline(x)}</li>" for x in items) + f"</{tag}>")
             continue
         if s.startswith("*") and s.endswith("*") and not s.startswith("**"):
