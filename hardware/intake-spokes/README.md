@@ -39,7 +39,7 @@ are "not perfectly spherical and may vary in size."
 
 Measured from the STL: 17.8 cm³ per wheel, about 22 g in TPU at 100% infill, less with 30 to 40 percent infill.
 
-## Mounting height
+## Mounting height and position
 
 The spoke tips should hit the ball a little above its centre, so the ball is pushed
 down and back into the robot rather than popped up. We aimed for 60 percent of the
@@ -50,9 +50,15 @@ average ball diameter:
 | Spoke tips bottom out at | 48.6 (68% up a POLLEN, 53% up a NECTAR) |
 | **Shaft centre** | **108.6** (48.6 + 60 tip radius) |
 
-Mount the REX shaft so its centre is about 108 to 109 mm above the tiles. The shaft
-runs left to right across the front of the robot. Spin it so the tips move **down
-at the front** and **back toward the robot** at the bottom.
+**Where the shaft goes:** inside the frame, not in front of it. The Strafer's rails and
+cross bars sit about 36 to 68 mm above the tiles, exactly where a ball is, and the 17 in
+chassis leaves only 25 mm of the 18 in starting cube in front. So the front cross bar is
+removed, the ball rolls into the open bay between the rails, and the flapper shaft sits
+about 76 mm behind the rail fronts on printed side plates. The ramp starts about 114 mm
+back, behind the sweep, so the ball is caught first and lifted second. See
+`docs/robot-v1-design.md` and the intake detail figure for dimensions.
+
+Spin the shaft so the tips move **down at the front** and **back along the bottom**.
 
 ## Spacing on the shaft
 
