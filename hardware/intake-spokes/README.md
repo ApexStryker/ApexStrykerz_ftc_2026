@@ -1,0 +1,102 @@
+# Intake Spoke Wheel (BIOBUZZ 2026-27)
+
+A two-spoke paddle wheel that mounts on the goBILDA 8mm REX shaft and sweeps game
+pieces into the robot. Several wheels sit side by side on one shaft to make an intake
+roller. Printed in TPU so the spokes bend around a ball instead of jamming on it.
+
+![Side view: spoke tips meeting both balls](preview-side.png)
+
+![Three wheels on a shaft](preview-iso.png)
+
+## Files
+
+| File | What it is |
+|---|---|
+| `spoke_wheel.scad` | The parametric model. Open in [OpenSCAD](https://openscad.org) to change any dimension. |
+| `spoke_wheel.stl` | Ready to print. One wheel. Print 3 to 5. |
+| `preview-*.png` | Renders of the part and of the assembly. |
+
+## Game piece sizes this is designed for
+
+From the 2026-27 FTC Competition Manual, section 9.8. Both are polyethylene balls and
+are "not perfectly spherical and may vary in size."
+
+| Piece | Diameter | Weight |
+|---|---|---|
+| POLLEN (yellow) | 2.8 in / 71 mm | ~25 g |
+| NECTAR (red, blue) | 3.6 in / 91 mm | ~41 g |
+
+## Key dimensions
+
+| | mm | Why |
+|---|---|---|
+| Tip-to-tip | 120 | Long enough to reach over the top of a POLLEN ball and pull it in |
+| Width along shaft | 20 | Stiff enough to push, narrow enough to fit 3 to 5 across |
+| Hub diameter | 24 | 8 mm of wall around the bore, so TPU grips the REX shaft |
+| Spoke thickness | 6 at the root, 4 at the tip | Tapered so the tip flexes and the root does not tear |
+| Root fillet | 6 | Removes the stress point where spoke meets hub |
+| Bore | 8 mm round × 7 mm hex (REX) with 0.10 mm interference | Snug press fit on the goBILDA shaft, no set screw needed in TPU |
+
+Measured from the STL: 17.8 cm³ per wheel, about 22 g in TPU at 100% infill, less with 30 to 40 percent infill.
+
+## Mounting height
+
+The spoke tips should hit the ball a little above its centre, so the ball is pushed
+down and back into the robot rather than popped up. We aimed for 60 percent of the
+average ball diameter:
+
+| | mm above the tiles |
+|---|---|
+| Spoke tips bottom out at | 48.6 (68% up a POLLEN, 53% up a NECTAR) |
+| **Shaft centre** | **108.6** (48.6 + 60 tip radius) |
+
+Mount the REX shaft so its centre is about 108 to 109 mm above the tiles. The shaft
+runs left to right across the front of the robot. Spin it so the tips move **down
+at the front** and **back toward the robot** at the bottom.
+
+## Spacing on the shaft
+
+Put 3 to 5 wheels on one shaft, about 40 mm apart, and stagger them 90 degrees
+(every other wheel rotated a quarter turn) so a ball is always being touched by
+something. Hold each wheel in place with goBILDA 8 mm shaft spacers or shaft
+collars on both sides. The REX hex drives the wheel; the spacers only stop it sliding.
+
+## Printing in TPU
+
+- Material: TPU, 95A shore hardness (the common flexible filament). Softer TPU will fold instead of pushing.
+- Orientation: flat on the bed, the big face down, exactly how the STL is exported.
+- Layer height 0.2 mm, 4 perimeters, 30 to 40 percent gyroid infill.
+- Slow: 25 to 35 mm/s, minimal retraction, part cooling fan low. TPU strings if rushed.
+- No supports needed.
+- If the bore is too tight to push on, warm the hub with a hair dryer and press it on, or set
+  `bore_clearance = 0` in the `.scad` and re-export.
+- Printing a rigid test piece first in PETG or PLA is fine: set `bore_clearance = 0.15`.
+
+## Changing the design
+
+Every number in `spoke_wheel.scad` is a named parameter at the top of the file.
+Common tweaks:
+
+| Want to | Change |
+|---|---|
+| Reach further out | `tip_radius` (then raise the shaft by the same amount) |
+| Stiffer or softer spokes | `root_t` and `tip_t` |
+| More paddles per turn | `spokes = 3` or `4` |
+| Fit a wider or narrower intake | `width` |
+| Looser or tighter shaft fit | `bore_clearance` |
+
+Then re-export from the command line or with File → Export in OpenSCAD:
+
+```bash
+openscad -o spoke_wheel.stl -D 'part="wheel"' spoke_wheel.scad
+```
+
+Assembly preview with three wheels and both balls:
+
+```bash
+openscad -o preview-side.png -D 'part="assembly"' --projection=ortho --camera=50,0,75,90,0,0,640 --imgsize=1400,900 spoke_wheel.scad
+```
+
+Sources: [BIOBUZZ Competition Manual V1, section 9.8](https://ftc-resources.firstinspires.org/ftc/game/manual),
+[AndyMark BIOBUZZ Scoring Elements](https://andymark.com/products/ftc-2026-27-game-preview-pack),
+[goBILDA 8mm REX shafting](https://www.gobilda.com/8mm-rex-shaft-starter-pack/).
