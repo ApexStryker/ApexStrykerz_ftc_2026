@@ -1,6 +1,6 @@
 # Intake Spoke Wheel (BIOBUZZ 2026-27)
 
-A two-spoke paddle wheel that mounts on the goBILDA 8mm REX shaft and sweeps game
+A two-spoke paddle wheel that mounts on a REV 5 mm hex shaft and sweeps game
 pieces into the robot. Several wheels sit side by side on one shaft to make an intake
 roller. Printed in TPU so the spokes bend around a ball instead of jamming on it.
 
@@ -32,12 +32,12 @@ are "not perfectly spherical and may vary in size."
 |---|---|---|
 | Tip-to-tip | 120 | Long enough to reach over the top of a POLLEN ball and pull it in |
 | Width along shaft | 20 | Stiff enough to push, narrow enough to fit 3 to 5 across |
-| Hub diameter | 24 | 8 mm of wall around the bore, so TPU grips the REX shaft |
+| Hub diameter | 24 | 9.5 mm of wall around the bore, so TPU grips the hex shaft |
 | Spoke thickness | 6 at the root, 4 at the tip | Tapered so the tip flexes and the root does not tear |
 | Root fillet | 6 | Removes the stress point where spoke meets hub |
-| Bore | 8 mm round × 7 mm hex (REX) with 0.10 mm interference | Snug press fit on the goBILDA shaft, no set screw needed in TPU |
+| Bore | 5 mm hex (REV) with 0.10 mm interference | Snug press fit on the REV shaft, no set screw needed in TPU. Set `bore = "rex8"` for a goBILDA 8mm REX shaft. |
 
-Measured from the STL: 17.8 cm³ per wheel, about 22 g in TPU at 100% infill, less with 30 to 40 percent infill.
+Measured from the STL: 18.2 cm³ per wheel, about 22 g in TPU at 100% infill, less with 30 to 40 percent infill.
 
 ## Mounting height and position
 
@@ -54,7 +54,7 @@ average ball diameter:
 cross bars sit about 36 to 68 mm above the tiles, exactly where a ball is, and the 17 in
 chassis leaves only 25 mm of the 18 in starting cube in front. So the front cross bar is
 removed, the ball rolls into the open bay between the rails, and the flapper shaft sits
-about 76 mm behind the rail fronts on printed side plates. The ramp starts about 114 mm
+about 76 mm behind the rail fronts on printed side plates, in REV 5 mm hex bearing pillow blocks. The ramp starts about 114 mm
 back, behind the sweep, so the ball is caught first and lifted second. See
 `docs/robot-v1-design.md` and the intake detail figure for dimensions.
 
@@ -64,8 +64,10 @@ Spin the shaft so the tips move **down at the front** and **back along the botto
 
 Put 3 to 5 wheels on one shaft, about 40 mm apart, and stagger them 90 degrees
 (every other wheel rotated a quarter turn) so a ball is always being touched by
-something. Hold each wheel in place with goBILDA 8 mm shaft spacers or shaft
-collars on both sides. The REX hex drives the wheel; the spacers only stop it sliding.
+something. Hold each wheel in place with REV 5 mm hex shaft spacers and shaft
+collars on both sides (Starter Kit). The hex drives the wheel; the spacers only stop it sliding.
+A REV 400 mm hex shaft spans the 264 mm bay with room for the side plates. Drive it with the
+REV Core Hex motor (125 RPM, 5 mm hex output) 1:1 through #25 sprockets or plastic gears.
 
 ## Printing in TPU
 
@@ -90,6 +92,7 @@ Common tweaks:
 | More paddles per turn | `spokes = 3` or `4` |
 | Fit a wider or narrower intake | `width` |
 | Looser or tighter shaft fit | `bore_clearance` |
+| goBILDA 8mm REX shaft instead | `bore = "rex8"` |
 
 Then re-export from the command line or with File → Export in OpenSCAD:
 
@@ -105,4 +108,4 @@ openscad -o preview-side.png -D 'part="assembly"' --projection=ortho --camera=50
 
 Sources: [BIOBUZZ Competition Manual V1, section 9.8](https://ftc-resources.firstinspires.org/ftc/game/manual),
 [AndyMark BIOBUZZ Scoring Elements](https://andymark.com/products/ftc-2026-27-game-preview-pack),
-[goBILDA 8mm REX shafting](https://www.gobilda.com/8mm-rex-shaft-starter-pack/).
+[REV 5 mm hex shafting](https://www.revrobotics.com/rev-41-1362/).

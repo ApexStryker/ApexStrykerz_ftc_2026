@@ -32,9 +32,9 @@ the one already built. If a second unopened kit exists, add 4 more 312 RPM motor
 | Motor | SKU | Qty | Output | Where it came from | Good for |
 |---|---|---:|---|---|---|
 | goBILDA 5203 Yellow Jacket 19.2:1, 312 RPM, 8mm REX | 5203-2402-0019 | 4 | 312 RPM, 24.3 kg·cm | Strafer kit | Drivetrain (installed) |
-| goBILDA 5203 Yellow Jacket 50.9:1, 117 RPM, 8mm REX | 5203-2402-0051 | 1 | 117 RPM, 62 kg·cm | DigiKey | Intake roller or feeder |
+| goBILDA 5203 Yellow Jacket 50.9:1, 117 RPM, 8mm REX | 5203-2402-0051 | 1 | 117 RPM, 62 kg·cm | DigiKey | Spare; v2 lift (needs goBILDA cables) |
 | REV HD Hex Motor + UltraPlanetary gearbox kit | REV-41-1600 | 3 | 6000 RPM bare, gearbox stages 3:1, 4:1, 5:1 mix and match | Starter Kit | Flywheel (bare or 3:1), lift |
-| REV Core Hex Motor | REV-41-1300 | 1 | 125 RPM, 3.2 N·m | Starter Kit | Slow mechanisms |
+| REV Core Hex Motor | REV-41-1300 | 1 | 125 RPM, 3.2 N·m | Starter Kit | Intake flapper (5 mm hex output) |
 | AndyMark NeveRest Hex 19.2 | am-5442 | 2 | 340 RPM | Robits kit | Intake, feeder |
 | AndyMark NeveRest Hex 50.9 | am-5443 | 1 | 128 RPM | Robits kit | Slow mechanisms |
 
@@ -203,6 +203,6 @@ Wera 3 mm ball-end hex key, 1.5 mm and 2 mm Allen wrenches, 2 × 5.5 mm nut driv
 - **Actuators are not the constraint.** 12 motors and 10 servos on hand, 8 + 8 allowed. Iteration 1 needs about 7 motors and 3 servos.
 - **Three build systems that don't bolt together.** goBILDA (M4, 8mm REX), REV (M3, 5mm hex, 15 mm extrusion), and Robits (10-32, 3/8 hex, 1/2 in grid). Plan on 3D-printed adapter plates where a REV or Robits mechanism meets the goBILDA chassis. The 5 mm to 3/8 in hex adapters let REV motors drive Robits gears and belts.
 - **Flywheel launcher is buildable from the box.** An HD Hex motor run bare (6000 RPM) or through a single 3:1 UltraPlanetary stage, driving 90 mm REV grip or traction wheels on 5 mm hex shaft, with the pillow blocks and bearings from the Starter Kit.
-- **Intake is covered.** The printed TPU spokes on a REX shaft driven by the 117 RPM goBILDA motor, or REV flap wheels on 5 mm hex driven by a NeveRest 19.2.
+- **Intake is covered.** The printed TPU spokes on a REV 5 mm hex shaft driven by the Core Hex motor, all from the Starter Kit.
 - **Vision is covered.** The C920 on a Control Hub USB port is exactly what R707/R708 allow.
 - **Buy list before the launcher build:** goBILDA motor cables and encoder cables (see section 5), a second webcam mount or printed bracket, and whatever REX shaft length the intake needs (the chassis kit includes none spare). Everything else for iteration 1 is on the shelf.

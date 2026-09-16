@@ -20,9 +20,9 @@ fixed spot. Leave and park in auto. Nothing else. Flower placement and Garden sc
 | Launcher | Single flywheel shaft with two 90 mm wheels, compliant hood | Simplest launcher that handles both ball sizes. One motor. Every part is in the Starter Kit. |
 | Hood | Hinged plate with rubber-band preload | Two ball sizes differ by 20 mm. A fixed hood tuned for 91 mm barely touches a 71 mm ball; a hinged hood compresses both. |
 | Feeder | One 1 in soft grip wheel on a Smart Servo, continuous mode | Balls are 25 to 41 g. A servo is enough, and it saves a motor port for v2. |
-| Intake | Through the frame: front cross bar removed, ball rolls into the bay between the rails, TPU flapper inside the frame pushes it onto a 45° ramp | A 17 in chassis leaves 25 mm of the 18 in cube in front, so no fixed intake can sit ahead of the frame, and the Strafer's channel sits 36 to 68 mm up, right at ball height. Opening the frame is the only way in without a deployable arm. |
+| Intake | Through the frame: front cross bar removed, ball rolls into the bay between the rails, TPU flapper on a REV 5 mm hex shaft inside the frame pushes it onto a 45° ramp | A 17 in chassis leaves 25 mm of the 18 in cube in front, so no fixed intake can sit ahead of the frame, and the Strafer's channel sits 36 to 68 mm up, right at ball height. Opening the frame is the only way in without a deployable arm. |
 | Aiming | Fixed hood angle, variable flywheel speed, drive to a marked spot; AprilTags for distance in v1.5 | Angle adjustment is a second axis to tune. Speed alone covers 3 to 5 ft. |
-| Frame | goBILDA channel for the intake, REV 15 mm extrusion for the tower, printed adapter plates between them | Uses what's on the shelf. Printed plates bridge the M4/M3 hole patterns. |
+| Frame | goBILDA chassis, REV 5 mm hex and 15 mm extrusion for every mechanism, printed adapter plates between them | Uses what's on the shelf and keeps all moving parts on one shaft standard. Printed plates bridge the M4/M3 hole patterns. |
 
 ## 2. Geometry and the 18 inch cube
 
@@ -90,17 +90,19 @@ balls. This is the number one thing to test the day the game pieces arrive.
   other one, so both sit in the last 5 in of the rails. The rails are now free at the front.
   Reinstall the M4 screws with the nylon patch.
 - **Bridge.** Two printed side plates bolt to the goBILDA hole pattern on the rail tops at
-  x = 40 to 115 mm from the rail fronts. Each is about 75 × 140 mm and carries a flanged
-  8 mm bearing for the flapper shaft, three shaft positions (100, 108, 116 mm), and a slot
+  x = 40 to 115 mm from the rail fronts. Each is about 75 × 140 mm and carries a REV 5 mm
+  hex bearing pillow block for the flapper shaft, three shaft positions (100, 108, 116 mm), and a slot
   for a REV 15 mm extrusion cut to ~264 mm that spans the bay at ~205 mm height. The webcam
   and the intake top guard mount to this bridge.
-- **Shaft and wheels.** 8mm REX shaft across the bay at 76 mm behind the rail fronts, 108 mm
-  above the tiles. Three TPU spoke wheels at 40 mm pitch, centered, alternate wheels turned a
-  quarter turn, spaced with goBILDA 8 mm spacers. Print from
-  `hardware/intake-spokes/spoke_wheel.stl`.
-- **Drive.** 117 RPM Yellow Jacket outside one rail, coupled to the shaft through the side
-  plate with an 8mm REX hub, or 1:1 by goBILDA sprockets if it needs to sit further back.
-  Rotation: tips move down at the front and back along the bottom.
+- **Shaft and wheels.** REV 5 mm × 400 mm hex shaft across the bay at 76 mm behind the rail
+  fronts, 108 mm above the tiles, in the pillow blocks on the side plates. Three TPU spoke
+  wheels at 40 mm pitch, centered, alternate wheels turned a quarter turn, located with REV
+  hex shaft spacers and shaft collars. Print from `hardware/intake-spokes/spoke_wheel.stl`
+  (5 mm hex bore).
+- **Drive.** REV Core Hex motor (125 RPM, 5 mm hex output) on the outside of one side plate,
+  1:1 to the flapper shaft by two 15T #25 sprockets or two 45T plastic gears. Tip speed on
+  the 120 mm sweep is 0.8 m/s. If it needs more bite, swap in a NeveRest 19.2 (340 RPM) with
+  a 2:1 gear pair. Rotation: tips move down at the front and back along the bottom.
 - **Funnel guides.** Two printed wedges on the bay floor edges, flush with the rail fronts,
   taper the 264 mm opening to the 110 mm channel over the first 114 mm. Print in two pieces
   each if they exceed the bed.
@@ -170,7 +172,7 @@ balls. This is the number one thing to test the day the game pieces arrive.
 | Control Hub | I2C 2 | 2 m Distance Sensor at channel top | 100 cm sensor cable | "channel full" |
 | Control Hub | I2C 0 | IMU | internal | heading |
 | Control Hub | USB | Logitech C920 | | AprilTags |
-| Expansion Hub | Motor 0 | intake 117 RPM Yellow Jacket | goBILDA bullet-to-VH adaptor (buy) | encoder optional |
+| Expansion Hub | Motor 0 | intake Core Hex | REV JST VH motor cable | encoder optional |
 | Expansion Hub | Motor 1 | indexer NeveRest 19.2 | AndyMark 12 in power + encoder cable | |
 | Expansion Hub | Motor 2 | flywheel HD Hex | REV JST VH motor cable | encoder required for velocity control |
 | Expansion Hub | Motor 3 | spare | | v2 Flower lift |
@@ -201,7 +203,7 @@ bus (R610). Everything on the 12 V bus is 18 AWG or heavier; the REV and goBILDA
 
 | Subsystem | Parts |
 |---|---|
-| Intake | 117 RPM Yellow Jacket; 2 goBILDA 8 mm flanged bearings (**buy**); 8mm REX shaft ~300 mm to span the bay (**buy**); 8mm REX hub (**buy**); 3 printed spoke wheels; goBILDA 8 mm spacers; 1 REV 420 mm extrusion cut to 264 mm for the bridge; the relocated front cross bar |
+| Intake | REV Core Hex motor; 1 × REV 5 mm × 400 mm hex shaft; 2 REV bearing pillow blocks; 2 × 15T #25 sprockets and chain (or 2 × 45T gears); 3 printed spoke wheels; REV hex shaft spacers and collars; 1 REV 420 mm extrusion cut to 264 mm for the bridge; the relocated front cross bar |
 | Channel | 4 × REV 420 mm extrusion, 4 × 225 mm, 2 corrugated sheets, 90° and inside-corner brackets |
 | Indexer | NeveRest 19.2, 4 × REV 1 in soft grip wheels, 2 × 90 mm hex shaft, 4 pillow blocks, #25 chain, 10T and 15T sprockets, shaft collars |
 | Feeder | 1 Smart Robot Servo V2, 1 × 1 in grip wheel, servo shaft adapter, metal bent servo bracket |
@@ -210,18 +212,17 @@ bus (R610). Everything on the 12 V bus is 18 AWG or heavier; the REV and goBILDA
 | Electronics | Control Hub, Expansion Hub, 1 Slim battery, switch cable, XT30 50 cm, RS485 50 cm, grounding strap, 36 in PWM, sensor cables, C920, battery holder plate, hook and loop |
 
 ### Buy list (small)
-1. goBILDA 8mm REX shaft, 300 mm or longer (the bay is 264 mm plus two side plates), 1 to 2.
-2. goBILDA 1611 flanged bearings 8 mm ID, 2 to 4.
-3. goBILDA motor power adaptor 3801-0613-0100 and encoder cable 3801-0709-0600, 2 each.
-4. goBILDA 8mm REX hub or clamping collar to lock the intake motor to the shaft, 1.
-5. PETG and TPU filament.
+1. PETG and TPU filament.
+2. Nothing else for the intake: the shaft, bearings, sprockets, spacers, and motor are all in the
+   Starter Kit. The goBILDA motor cables (3801-0613-0100, 3801-0709-0600) are only needed if
+   the 117 RPM Yellow Jacket is used somewhere in v2.
 
 ## 7. 3D printed parts list
 
 | Part | Material | Qty | Size check |
 |---|---|---:|---|
 | Intake spoke wheel | TPU 95A | 3 | 120 × 20 mm, done |
-| Intake side plate: 8 mm bearing pocket, 3 shaft heights, bridge slot, motor mount | PETG | 2 | ~75 × 140 mm |
+| Intake side plate: pillow-block pattern at 3 shaft heights, bridge slot, Core Hex mount | PETG | 2 | ~75 × 140 mm |
 | Funnel guide wedges for the bay floor | PETG | 2 (4 halves) | each half < 120 mm |
 | Intake top guard | PETG or corrugated plastic | 1 | print in 2 pieces if > 200 mm |
 | goBILDA-to-REV adapter plate (8 mm pattern to 15 mm slots) | PETG | 4 | ~96 × 48 mm |
@@ -264,5 +265,7 @@ bus (R610). Everything on the 12 V bus is 18 AWG or heavier; the REV and goBILDA
 - **Control Hub USB and the webcam.** Only one camera in v1. Confirm the C920 enumerates before
   building the mount.
 - **Cable strain** at the intake motor. Route along the rail with cable clips; the intake takes hits.
+- **Core Hex torque.** It is the weakest legal motor (3.2 N·m stall). Plenty for 41 g balls, but if
+  the flapper stalls on a Nectar at the ramp foot, move to the NeveRest 19.2 with a 2:1 reduction.
 - **Weight bias.** Battery and hubs low and rear balance the front-heavy intake. Check that the
   robot doesn't lift a front wheel under hard braking after the tower goes on.

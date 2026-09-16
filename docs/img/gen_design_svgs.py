@@ -132,7 +132,7 @@ S.dim(ix(0.5), iy(-1.3), ix(17.5), iy(-1.3), "17 in", GRAY)
 # legend column
 LX = 780
 S.box(LX, 70, 300, 335, "white", EDGE, 10, 1.5)
-items = [(1, ORANGE, "Flapper intake", "3 TPU spoke wheels on 8mm REX, 117 RPM, in the frame"),
+items = [(1, ORANGE, "Flapper intake", "3 TPU spoke wheels on 5 mm hex, Core Hex 125 RPM"),
          (2, INK, "Ramp + channel", "45° incline, 4 balls single file, indexer rollers"),
          (3, GRAY, "Feeder", "1 in grip wheel on a Smart Servo, one ball per shot"),
          (4, "#2b2b2b", "Flywheel", "2 x 90 mm grip wheels, HD Hex bare, ~2200 RPM"),
@@ -218,7 +218,7 @@ for k in (-1, 0, 1):
     S.box(tx(76-60), ty(yc-10), 120*K, 20*K, ORANGE, INK, 1.5)
 S.text(tx(170), ty(W_IN/2+40+22), "3 spoke wheels, 40 mm pitch", 10, ORANGE, "middle")
 S.box(tx(150), ty(W_IN+RAIL+52), 60*K, 32*K, "#b8b8b8", INK, 3); S.box(tx(168), ty(W_IN+RAIL+56), 24*K, 24*K, YELLOW, "none", 2, 0)
-S.text(tx(180), ty(W_IN+RAIL+100), "117 RPM motor, outside the rail", 10, INK, "middle")
+S.text(tx(180), ty(W_IN+RAIL+100), "Core Hex motor, outside the plate", 10, INK, "middle")
 S.circle(tx(-12), ty(W_IN/2+55), 45.5*K, "#e87070", INK, 1.5)
 S.circle(tx(150), ty(W_IN/2), 35.5*K, YELLOW, INK, 1.5)
 S.arrow(tx(-90), ty(W_IN/2+55), tx(-62), ty(W_IN/2+55), INK, 2, 8)
@@ -256,7 +256,7 @@ S.text(495, 168, "Servos 0: feeder   1: hood latch (later)", 11, "white", "middl
 S.text(495, 186, "I2C 1: color (intake)   2: distance (hopper)", 11, "white", "middle")
 S.text(495, 204, "USB: Logitech C920", 11, "white", "middle")
 # Expansion Hub ports
-S.text(775, 150, "Motor 0: intake 117 RPM", 11, "white", "middle")
+S.text(775, 150, "Motor 0: intake Core Hex", 11, "white", "middle")
 S.text(775, 168, "Motor 1: indexer NeveRest 19.2", 11, "white", "middle")
 S.text(775, 186, "Motor 2: flywheel HD Hex", 11, "white", "middle")
 S.text(775, 204, "Motor 3: spare (Flower lift, v2)", 11, "white", "middle")
@@ -270,7 +270,7 @@ node(450, 330, 90, 48, "Feeder", "Smart Servo", BLUE, INK); S.line(495, 330, 495
 node(560, 330, 100, 48, "Color", "REV V3, I2C", TEAL := "#14B8A6", INK); S.line(610, 330, 495, 210, TEAL, 1.5)
 node(680, 330, 100, 48, "Distance", "2 m, I2C", TEAL, INK); S.line(730, 330, 495, 210, TEAL, 1.5)
 node(800, 330, 120, 48, "Webcam", "C920, USB", "#e8f4ff", INK); S.line(860, 330, 495, 210, INK, 1.5)
-devs2 = [(560, "Intake", "117 RPM"), (680, "Indexer", "NeveRest 19.2"), (800, "Flywheel", "HD Hex bare")]
+devs2 = [(560, "Intake", "Core Hex 125"), (680, "Indexer", "NeveRest 19.2"), (800, "Flywheel", "HD Hex bare")]
 for x, t, s2 in devs2:
     node(x, 420, 110, 48, t, s2, ORANGE, INK)
     S.line(x+55, 420, 775, 210, ORANGE, 1.5)

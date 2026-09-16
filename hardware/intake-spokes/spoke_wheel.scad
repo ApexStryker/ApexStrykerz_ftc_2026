@@ -1,6 +1,7 @@
 // ApexStrykerz - BIOBUZZ intake spoke wheel
 // ---------------------------------------------------------------
-// A two-spoke paddle wheel that mounts on a goBILDA 8mm REX shaft and
+// A two-spoke paddle wheel that mounts on a REV 5 mm hex shaft (or, with
+// bore = "rex8", a goBILDA 8mm REX shaft) and
 // sweeps POLLEN (2.8 in / 71 mm) and NECTAR (3.6 in / 91 mm) balls into
 // the robot. Print in TPU so the spokes flex instead of jamming.
 //
@@ -27,9 +28,11 @@ root_t        = 6;       // spoke thickness where it leaves the hub
 tip_t         = 4;       // spoke thickness at the rounded tip
 fillet_r      = 6;       // radius of the fillet between spoke and hub
 
-// ---- goBILDA 8mm REX bore: an 8 mm round intersected with a 7 mm hex ----
-rex_round_d   = 8;
-rex_hex_af    = 7;       // hex across flats
+// ---- Bore ----
+bore          = "hex5";  // "hex5" = REV 5 mm hex shaft (what we have), "rex8" = goBILDA 8mm REX
+hex5_af       = 5;       // REV hex shaft across flats
+rex_round_d   = 8;       // goBILDA REX: an 8 mm round intersected with a 7 mm hex
+rex_hex_af    = 7;
 bore_clearance = -0.10;  // TPU: slight interference grips the shaft. PETG/PLA: use +0.15.
 
 // ---- Where the shaft should sit on the robot (for the assembly preview) ----
@@ -46,12 +49,15 @@ $fn = 128;
 // ---------------------------------------------------------------
 // 2D building blocks
 // ---------------------------------------------------------------
-module rex_bore_2d(clearance = 0) {
-    intersection() {
-        circle(d = rex_round_d + clearance, $fn = 96);
-        // circle($fn=6) puts corners on the circle, so diameter = across_flats / cos(30)
-        circle(d = (rex_hex_af + clearance) / cos(30), $fn = 6);
-    }
+module bore_2d(clearance = 0) {
+    // circle($fn=6) puts corners on the circle, so diameter = across_flats / cos(30)
+    if (bore == "hex5")
+        circle(d = (hex5_af + clearance) / cos(30), $fn = 6);
+    else
+        intersection() {
+            circle(d = rex_round_d + clearance, $fn = 96);
+            circle(d = (rex_hex_af + clearance) / cos(30), $fn = 6);
+        }
 }
 
 module spoke_2d() {
@@ -75,7 +81,7 @@ module wheel_outline_2d() {
 module wheel_profile_2d() {
     difference() {
         wheel_outline_2d();
-        rex_bore_2d(bore_clearance);
+        bore_2d(bore_clearance);
     }
 }
 
@@ -89,9 +95,9 @@ module spoke_wheel() {
 // ---------------------------------------------------------------
 // Assembly preview: shaft horizontal along Y, robot drives toward +X
 // ---------------------------------------------------------------
-module rex_shaft(length) {
+module shaft(length) {
     color("silver") rotate([-90, 0, 0]) linear_extrude(height = length, center = true)
-        rex_bore_2d(0);
+        bore_2d(0);
 }
 
 module sweep_ring() {
@@ -107,7 +113,7 @@ module assembly() {
 
     shaft_len = (wheel_count + 1) * wheel_pitch;
     translate([0, 0, shaft_h]) {
-        rex_shaft(shaft_len);
+        shaft(shaft_len);
         for (i = [0 : wheel_count - 1])
             translate([0, (i - (wheel_count - 1) / 2) * wheel_pitch + width / 2, 0])
                 rotate([90, 0, 0]) rotate([0, 0, wheel_angle])
@@ -132,5 +138,5 @@ if (part == "wheel")         spoke_wheel();
 else if (part == "assembly") assembly();
 else if (part == "profile")  wheel_profile_2d();
 
-echo(str("Tip-to-tip diameter: ", 2 * tip_radius, " mm"));
+echo(str("Bore: ", bore, "   Tip-to-tip diameter: ", 2 * tip_radius, " mm"));
 echo(str("Mount the shaft centre ", shaft_h, " mm above the tiles (spoke tips bottom out at ", contact_h, " mm)"));
