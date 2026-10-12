@@ -31,7 +31,10 @@ import java.util.Locale;
  *   Left stick up/down = launcher_mtr      Right stick up/down = intake_mtr
  *   Hold X = servo_left    Hold B = servo_right    Hold Y = servo_windmill
  *
- * Either gamepad: LEFT TRIGGER reverses a servo, RIGHT TRIGGER allows 100% motor power.
+ * Holding a servo button SWEEPS the servo back and forth across its whole range every
+ * 2 seconds, so any servo visibly moves: a standard-mode servo swings to each end, a
+ * continuous-mode servo spins one way, then the other. Hold LEFT TRIGGER as well to park it
+ * at one end instead. RIGHT TRIGGER allows 100% motor power.
  * A missing name is reported on screen and skipped; it never crashes the test.
  * Every movement is logged under the tag "NameTest".
  */
@@ -50,8 +53,11 @@ public class ConfigNameTest extends LinearOpMode {
 
     private boolean logNow;
 
+    private static final double SWEEP_PERIOD_S = 2.0;
+
     private static class NamedServo {
         final String name; final Servo servo; boolean on;
+        final ElapsedTime held = new ElapsedTime();
         NamedServo(String name, Servo servo) { this.name = name; this.servo = servo; }
     }
 
@@ -96,7 +102,7 @@ public class ConfigNameTest extends LinearOpMode {
             show(launcher, LAUNCHER); show(intake, INTAKE);
             for (NamedServo s : servos) {
                 telemetry.addLine(String.format(Locale.US, "%-15s %s", s.name,
-                        s.servo == null ? "NOT FOUND in configuration" : (s.on ? "MOVING" : "idle") + "  " + where(s.servo)));
+                        s.servo == null ? "NOT FOUND in configuration" : (s.on ? String.format(Locale.US, "MOVING cmd %.2f", s.servo.getPosition()) : "idle") + "  " + where(s.servo)));
             }
             telemetry.update();
         }
@@ -137,10 +143,12 @@ public class ConfigNameTest extends LinearOpMode {
     private void hold(NamedServo s, boolean held, boolean reverse) {
         if (s.servo == null) return;
         if (held) {
-            double pos = reverse ? 0.0 : 1.0;
+            if (!s.on) s.held.reset();
+            double pos = reverse ? 0.0
+                    : 0.5 - 0.5 * Math.cos(2 * Math.PI * s.held.seconds() / SWEEP_PERIOD_S);
             s.servo.setPosition(pos);
             if (!s.on && s.servo instanceof ServoImplEx) ((ServoImplEx) s.servo).setPwmEnable();
-            if (!s.on || logNow) RobotLog.ii(TAG, "NAMED %s command=%.1f", s.name, pos);
+            if (!s.on || logNow) RobotLog.ii(TAG, "NAMED %s command=%.2f", s.name, pos);
             s.on = true;
         } else if (s.on) {
             release(s);
