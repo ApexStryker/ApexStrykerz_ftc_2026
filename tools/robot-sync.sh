@@ -66,6 +66,8 @@ fi
 for f in $(adb -s "$HUB" shell ls /sdcard/FIRST/ 2>/dev/null | tr -d '\r' | grep -i '\.xml$'); do
   adb -s "$HUB" pull "/sdcard/FIRST/$f" "$OUT/configs/$f" >/dev/null 2>&1 && log "Saved config: $OUT/configs/$f"
 done
+log "Blocks programs on hub:  $(adb -s "$HUB" shell ls /sdcard/FIRST/blocks/ 2>/dev/null | tr -d '\r' | grep '\.blk$' | tr '\n' ' ')"
+log "OnBot Java files on hub: $(adb -s "$HUB" shell find /sdcard/FIRST/java/src -name '*.java' 2>/dev/null | tr -d '\r' | sed 's|.*/||' | tr '\n' ' ')"
 adb -s "$HUB" logcat -d -v time 2>/dev/null | grep -E "RobotCore|Robocol|OpMode|HardwarePortTest|System\\\$Error|Exception" \
   > "$OUT/logs/logcat-$STAMP.txt"
 log "Saved log:    $OUT/logs/logcat-$STAMP.txt ($(wc -l < "$OUT/logs/logcat-$STAMP.txt" | tr -d ' ') lines)"
