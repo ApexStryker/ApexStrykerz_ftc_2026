@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.test;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -44,6 +45,9 @@ import java.util.Locale;
  *
  * Readings are written to the robot log (tag "PortTest") whenever something moves.
  */
+// Hidden from the Driver Station list now that the configuration names are verified with
+// Config Name Test. Remove @Disabled to probe raw ports again after rewiring.
+@Disabled
 @TeleOp(name = "Hardware Port Test", group = "Test")
 public class HardwarePortTest extends LinearOpMode {
 
