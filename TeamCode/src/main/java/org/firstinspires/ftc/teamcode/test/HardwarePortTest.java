@@ -10,6 +10,8 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoController;
 import com.qualcomm.robotcore.hardware.ServoControllerEx;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
@@ -35,12 +37,18 @@ import java.util.Set;
  *   A                -> stop everything
  *
  * Only the picked port ever moves. Switching ports stops the old one first.
+ *
+ * Every reading is also written to the robot log with the tag "PortTest", about four
+ * times a second while a port is being driven, so it can be reviewed from a laptop:
+ *   adb logcat -s PortTest
  */
 @TeleOp(name = "Hardware Port Test", group = "Test")
 public class HardwarePortTest extends LinearOpMode {
 
     private static final double NORMAL_MOTOR_LIMIT = 0.5;
     private static final double DEADZONE = 0.05;
+    private static final String TAG = "PortTest";
+    private static final double LOG_PERIOD_S = 0.25;
 
     /** One motor or servo port on one hub. */
     private static class Port {
@@ -71,6 +79,8 @@ public class HardwarePortTest extends LinearOpMode {
 
         for (Port p : ports) stop(p);
 
+        for (Port p : ports) RobotLog.ii(TAG, "port %-28s config=%s", p.label(), p.configuredName);
+
         telemetry.addLine("Hardware Port Test. Robot on blocks!");
         telemetry.addLine("D-pad up/down picks a port, left stick drives it, A stops.");
         telemetry.addData("Ports found", ports.size());
@@ -83,6 +93,11 @@ public class HardwarePortTest extends LinearOpMode {
 
         int selected = 0;
         boolean prevUp = false, prevDown = false;
+        ElapsedTime logTimer = new ElapsedTime();
+        if (!ports.isEmpty()) {
+            start(ports.get(selected));
+            RobotLog.ii(TAG, "PICKED %s config=%s", ports.get(selected).label(), ports.get(selected).configuredName);
+        }
 
         while (opModeIsActive() && !ports.isEmpty()) {
             // Pick a port. Edge-detect so one press moves one step.
@@ -92,6 +107,7 @@ public class HardwarePortTest extends LinearOpMode {
                 int step = up ? -1 : 1;
                 selected = (selected + step + ports.size()) % ports.size();
                 start(ports.get(selected));
+                RobotLog.ii(TAG, "PICKED %s config=%s", ports.get(selected).label(), ports.get(selected).configuredName);
             }
             prevUp = up;
             prevDown = down;
@@ -108,6 +124,24 @@ public class HardwarePortTest extends LinearOpMode {
             } else {
                 // 0.5 is the middle of a servo's range, and "stopped" for a continuous servo.
                 p.servoCtrl.setServoPosition(p.number, 0.5 + 0.5 * stick);
+            }
+
+            // ---- Robot log: readings while the port is being driven ----
+            if (stick != 0 && logTimer.seconds() >= LOG_PERIOD_S) {
+                logTimer.reset();
+                if (p.isMotor) {
+                    String extra = "";
+                    if (p.motorCtrl instanceof DcMotorControllerEx) {
+                        DcMotorControllerEx ex = (DcMotorControllerEx) p.motorCtrl;
+                        extra = String.format(java.util.Locale.US, " vel=%.0f tps current=%.2f A",
+                                ex.getMotorVelocity(p.number), ex.getMotorCurrent(p.number, CurrentUnit.AMPS));
+                    }
+                    RobotLog.ii(TAG, "DRIVE %s stick=%+.2f power=%+.2f ticks=%d%s", p.label(), stick,
+                            p.motorCtrl.getMotorPower(p.number), p.motorCtrl.getMotorCurrentPosition(p.number), extra);
+                } else {
+                    RobotLog.ii(TAG, "DRIVE %s stick=%+.2f servoCmd=%.2f", p.label(), stick,
+                            p.servoCtrl.getServoPosition(p.number));
+                }
             }
 
             // ---- Telemetry: the picked port in detail, then the whole list ----
