@@ -2,12 +2,10 @@ package org.firstinspires.ftc.teamcode.test;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorController;
 import com.qualcomm.robotcore.hardware.DcMotorControllerEx;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoController;
 import com.qualcomm.robotcore.hardware.ServoControllerEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -15,235 +13,210 @@ import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.Locale;
 
 /**
- * Hardware Port Test: drive every motor and servo port, one at a time, to find out
- * what is plugged in where.
- *
- * It talks to the hub ports directly, so it works whatever the devices are named.
- * Each port's name in the active Driver Station configuration is shown next to it,
- * or "(not configured)".
+ * Hardware Port Test: every joystick axis and button drives its own hub port, so each
+ * motor and servo can be checked one at a time. Ports are driven by number, so this
+ * works whatever the devices are named in the configuration.
  *
  * PUT THE ROBOT ON BLOCKS. Drive wheels will spin.
  *
- * Gamepad 1:
- *   D-pad up / down  -> pick the previous / next port
- *   Left stick Y     -> drive the picked port
- *                       motors: power, 50% max (hold right bumper for 100%)
- *                       servos: position 0 to 1; a continuous servo spins instead
- *   A                -> stop everything
+ * GAMEPAD 1 - Control Hub
+ *   Left stick  up/down     -> motor 0      Right stick up/down     -> motor 2
+ *   Left stick  left/right  -> motor 1      Right stick left/right  -> motor 3
+ *   Hold X, Y, B, A, LB, RB -> servo 0, 1, 2, 3, 4, 5
+ *       (add left trigger to go the other way)
  *
- * Only the picked port ever moves. Switching ports stops the old one first.
+ * GAMEPAD 2 - Expansion Hub
+ *   Left stick  up/down     -> motor 0      Right stick up/down     -> motor 2
+ *   Left stick  left/right  -> motor 1      Right stick left/right  -> motor 3
+ *   Hold X, Y, B, A, LB, RB -> servo 0, 1, 2, 3, 4, 5
+ *       (add left trigger to go the other way)
  *
- * Every reading is also written to the robot log with the tag "PortTest", about four
- * times a second while a port is being driven, so it can be reviewed from a laptop:
+ * Motors run at up to 50% power. Hold the RIGHT TRIGGER on that gamepad for 100%.
+ * A servo button moves a positional servo to one end, or spins a continuous servo;
+ * releasing it cuts the signal, so a continuous servo stops.
+ *
+ * Readings are written to the robot log (tag "PortTest") whenever a port is moving:
  *   adb logcat -s PortTest
  */
 @TeleOp(name = "Hardware Port Test", group = "Test")
 public class HardwarePortTest extends LinearOpMode {
 
     private static final double NORMAL_MOTOR_LIMIT = 0.5;
-    private static final double DEADZONE = 0.05;
+    private static final double DEADZONE = 0.10;
     private static final String TAG = "PortTest";
     private static final double LOG_PERIOD_S = 0.25;
 
-    /** One motor or servo port on one hub. */
-    private static class Port {
-        final String hub;          // "Control Hub", "Expansion Hub 2", ...
-        final boolean isMotor;
-        final int number;
-        final DcMotorController motorCtrl;
-        final ServoController servoCtrl;
-        String configuredName = "(not configured)";
-
-        Port(String hub, int number, DcMotorController c) {
-            this.hub = hub; this.isMotor = true; this.number = number; this.motorCtrl = c; this.servoCtrl = null;
-        }
-        Port(String hub, int number, ServoController c) {
-            this.hub = hub; this.isMotor = false; this.number = number; this.motorCtrl = null; this.servoCtrl = c;
-        }
-        String label() {
-            return hub + "  " + (isMotor ? "motor " : "servo ") + number;
-        }
-    }
-
-    private final List<Port> ports = new ArrayList<>();
+    private DcMotorController chMotors, ehMotors;
+    private ServoController chServos, ehServos;
+    private final boolean[][] servoOn = new boolean[2][6];
 
     @Override
     public void runOpMode() {
-        buildPortList();
-        lookUpConfiguredNames();
+        for (DcMotorController c : hardwareMap.getAll(DcMotorController.class)) {
+            if (isControlHub(c)) chMotors = c; else ehMotors = c;
+        }
+        for (ServoController c : hardwareMap.getAll(ServoController.class)) {
+            if (isControlHub(c)) chServos = c; else ehServos = c;
+        }
+        prepareMotors(chMotors);
+        prepareMotors(ehMotors);
+        stopAll();
 
-        for (Port p : ports) stop(p);
-
-        for (Port p : ports) RobotLog.ii(TAG, "port %-28s config=%s", p.label(), p.configuredName);
+        RobotLog.ii(TAG, "found: CH motors=%b CH servos=%b EH motors=%b EH servos=%b",
+                chMotors != null, chServos != null, ehMotors != null, ehServos != null);
 
         telemetry.addLine("Hardware Port Test. Robot on blocks!");
-        telemetry.addLine("D-pad up/down picks a port, left stick drives it, A stops.");
-        telemetry.addData("Ports found", ports.size());
-        if (!hasHubNamed("Expansion")) {
-            telemetry.addLine("WARNING: no Expansion Hub in the active configuration.");
-        }
+        telemetry.addLine("Gamepad 1 = Control Hub, Gamepad 2 = Expansion Hub.");
+        telemetry.addLine("Sticks drive motors 0-3. Hold X,Y,B,A,LB,RB for servos 0-5.");
+        if (ehMotors == null) telemetry.addLine("WARNING: no Expansion Hub in the active configuration.");
         telemetry.update();
 
         waitForStart();
-
-        int selected = 0;
-        boolean prevUp = false, prevDown = false;
         ElapsedTime logTimer = new ElapsedTime();
-        if (!ports.isEmpty()) {
-            start(ports.get(selected));
-            RobotLog.ii(TAG, "PICKED %s config=%s", ports.get(selected).label(), ports.get(selected).configuredName);
-        }
 
-        while (opModeIsActive() && !ports.isEmpty()) {
-            // Pick a port. Edge-detect so one press moves one step.
-            boolean up = gamepad1.dpad_up, down = gamepad1.dpad_down;
-            if ((up && !prevUp) || (down && !prevDown)) {
-                stop(ports.get(selected));
-                int step = up ? -1 : 1;
-                selected = (selected + step + ports.size()) % ports.size();
-                start(ports.get(selected));
-                RobotLog.ii(TAG, "PICKED %s config=%s", ports.get(selected).label(), ports.get(selected).configuredName);
-            }
-            prevUp = up;
-            prevDown = down;
+        while (opModeIsActive()) {
+            boolean logNow = logTimer.seconds() >= LOG_PERIOD_S;
+            if (logNow) logTimer.reset();
 
-            Port p = ports.get(selected);
-            double stick = -gamepad1.left_stick_y;           // up = positive
-            if (Math.abs(stick) < DEADZONE) stick = 0;
+            // ---- Control Hub from gamepad 1 ----
+            double limit1 = gamepad1.right_trigger > 0.5 ? 1.0 : NORMAL_MOTOR_LIMIT;
+            double[] ch = {
+                    -gamepad1.left_stick_y, gamepad1.left_stick_x,
+                    -gamepad1.right_stick_y, gamepad1.right_stick_x };
+            boolean[] chBtn = { gamepad1.x, gamepad1.y, gamepad1.b, gamepad1.a,
+                    gamepad1.left_bumper, gamepad1.right_bumper };
+            driveMotors("Control Hub", chMotors, ch, limit1, logNow);
+            driveServos(0, "Control Hub", chServos, chBtn, gamepad1.left_trigger > 0.5, logNow);
 
-            if (gamepad1.a) {
-                for (Port q : ports) stop(q);
-            } else if (p.isMotor) {
-                double limit = gamepad1.right_bumper ? 1.0 : NORMAL_MOTOR_LIMIT;
-                p.motorCtrl.setMotorPower(p.number, stick * limit);
-            } else {
-                // 0.5 is the middle of a servo's range, and "stopped" for a continuous servo.
-                p.servoCtrl.setServoPosition(p.number, 0.5 + 0.5 * stick);
-            }
+            // ---- Expansion Hub from gamepad 2 ----
+            double limit2 = gamepad2.right_trigger > 0.5 ? 1.0 : NORMAL_MOTOR_LIMIT;
+            double[] eh = {
+                    -gamepad2.left_stick_y, gamepad2.left_stick_x,
+                    -gamepad2.right_stick_y, gamepad2.right_stick_x };
+            boolean[] ehBtn = { gamepad2.x, gamepad2.y, gamepad2.b, gamepad2.a,
+                    gamepad2.left_bumper, gamepad2.right_bumper };
+            driveMotors("Expansion Hub", ehMotors, eh, limit2, logNow);
+            driveServos(1, "Expansion Hub", ehServos, ehBtn, gamepad2.left_trigger > 0.5, logNow);
 
-            // ---- Robot log: readings while the port is being driven ----
-            if (stick != 0 && logTimer.seconds() >= LOG_PERIOD_S) {
-                logTimer.reset();
-                if (p.isMotor) {
-                    String extra = "";
-                    if (p.motorCtrl instanceof DcMotorControllerEx) {
-                        DcMotorControllerEx ex = (DcMotorControllerEx) p.motorCtrl;
-                        extra = String.format(java.util.Locale.US, " vel=%.0f tps current=%.2f A",
-                                ex.getMotorVelocity(p.number), ex.getMotorCurrent(p.number, CurrentUnit.AMPS));
-                    }
-                    RobotLog.ii(TAG, "DRIVE %s stick=%+.2f power=%+.2f ticks=%d%s", p.label(), stick,
-                            p.motorCtrl.getMotorPower(p.number), p.motorCtrl.getMotorCurrentPosition(p.number), extra);
-                } else {
-                    RobotLog.ii(TAG, "DRIVE %s stick=%+.2f servoCmd=%.2f", p.label(), stick,
-                            p.servoCtrl.getServoPosition(p.number));
-                }
-            }
-
-            // ---- Telemetry: the picked port in detail, then the whole list ----
-            telemetry.addData("PICKED", p.label());
-            telemetry.addData("Config name", p.configuredName);
-            if (p.isMotor) {
-                telemetry.addData("Power", "%.2f  (%s)", p.motorCtrl.getMotorPower(p.number),
-                        gamepad1.right_bumper ? "100% allowed" : "50% max, hold RB for 100%");
-                telemetry.addData("Encoder ticks", p.motorCtrl.getMotorCurrentPosition(p.number));
-                if (p.motorCtrl instanceof DcMotorControllerEx) {
-                    DcMotorControllerEx ex = (DcMotorControllerEx) p.motorCtrl;
-                    telemetry.addData("Velocity", "%.0f ticks/s", ex.getMotorVelocity(p.number));
-                    telemetry.addData("Current", "%.2f A", ex.getMotorCurrent(p.number, CurrentUnit.AMPS));
-                }
-            } else {
-                telemetry.addData("Servo command", "%.2f  (0.5 = center / stopped)",
-                        p.servoCtrl.getServoPosition(p.number));
-            }
+            // ---- Screen ----
+            telemetry.addLine("GP1 = Control Hub    GP2 = Expansion Hub");
+            telemetry.addLine("L stick up/down m0, L left/right m1, R up/down m2, R left/right m3");
+            telemetry.addLine("Hold X Y B A LB RB = servo 0-5 (+LT reverse). RT = 100% power");
             telemetry.addLine();
-            for (int i = 0; i < ports.size(); i++) {
-                Port q = ports.get(i);
-                telemetry.addLine((i == selected ? ">> " : "    ") + q.label() + "  =  " + q.configuredName);
-            }
+            showMotors("Control Hub", chMotors);
+            showMotors("Expansion Hub", ehMotors);
+            showServos(0, "Control Hub");
+            showServos(1, "Expansion Hub");
             telemetry.update();
         }
-
-        for (Port q : ports) stop(q);
+        stopAll();
     }
 
     // ---------------------------------------------------------------------------------
 
-    /** Every motor port, then every servo port, Control Hub first. */
-    private void buildPortList() {
-        List<DcMotorController> motorCtrls = new ArrayList<>(hardwareMap.getAll(DcMotorController.class));
-        List<ServoController> servoCtrls = new ArrayList<>(hardwareMap.getAll(ServoController.class));
-        motorCtrls.sort((a, b) -> hubRank(nameOf(a)) - hubRank(nameOf(b)));
-        servoCtrls.sort((a, b) -> hubRank(nameOf(a)) - hubRank(nameOf(b)));
-
-        for (DcMotorController c : motorCtrls) {
-            for (int i = 0; i < 4; i++) {
-                c.setMotorMode(i, DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                c.setMotorZeroPowerBehavior(i, DcMotor.ZeroPowerBehavior.BRAKE);
-                ports.add(new Port(nameOf(c), i, c));
+    private void driveMotors(String hub, DcMotorController c, double[] sticks, double limit, boolean logNow) {
+        if (c == null) return;
+        for (int port = 0; port < 4; port++) {
+            double s = Math.abs(sticks[port]) < DEADZONE ? 0 : sticks[port];
+            c.setMotorPower(port, s * limit);
+            if (s != 0 && logNow) {
+                String extra = "";
+                if (c instanceof DcMotorControllerEx) {
+                    DcMotorControllerEx ex = (DcMotorControllerEx) c;
+                    extra = String.format(Locale.US, " vel=%.0f tps current=%.2f A",
+                            ex.getMotorVelocity(port), ex.getMotorCurrent(port, CurrentUnit.AMPS));
+                }
+                RobotLog.ii(TAG, "MOTOR %s %d (%s) power=%+.2f ticks=%d%s", hub, port,
+                        motorName(c, port), s * limit, c.getMotorCurrentPosition(port), extra);
             }
         }
-        for (ServoController c : servoCtrls) {
-            for (int i = 0; i < 6; i++) ports.add(new Port(nameOf(c), i, c));
+    }
+
+    private void driveServos(int hubIdx, String hub, ServoController c, boolean[] buttons,
+                             boolean reverse, boolean logNow) {
+        if (c == null) return;
+        for (int port = 0; port < 6; port++) {
+            if (buttons[port]) {
+                double pos = reverse ? 0.0 : 1.0;
+                c.setServoPosition(port, pos);
+                if (!servoOn[hubIdx][port] && c instanceof ServoControllerEx) {
+                    ((ServoControllerEx) c).setServoPwmEnable(port);
+                }
+                if (!servoOn[hubIdx][port] || logNow) {
+                    RobotLog.ii(TAG, "SERVO %s %d (%s) command=%.1f", hub, port, servoName(c, port), pos);
+                }
+                servoOn[hubIdx][port] = true;
+            } else if (servoOn[hubIdx][port]) {
+                releaseServo(c, port);
+                servoOn[hubIdx][port] = false;
+                RobotLog.ii(TAG, "SERVO %s %d released", hub, port);
+            }
         }
     }
 
-    /** Find which configured device, if any, sits on each port. */
-    private void lookUpConfiguredNames() {
-        for (DcMotor m : hardwareMap.getAll(DcMotor.class)) {
-            setName(m.getController(), m.getPortNumber(), true, nameOf(m) + " (motor)");
-        }
-        for (Servo s : hardwareMap.getAll(Servo.class)) {
-            setName(s.getController(), s.getPortNumber(), false, nameOf(s) + " (servo)");
-        }
-        for (CRServo s : hardwareMap.getAll(CRServo.class)) {
-            setName(s.getController(), s.getPortNumber(), false, nameOf(s) + " (continuous servo)");
+    private void showMotors(String hub, DcMotorController c) {
+        if (c == null) { telemetry.addLine(hub + ": not in configuration"); return; }
+        for (int port = 0; port < 4; port++) {
+            double vel = c instanceof DcMotorControllerEx ? ((DcMotorControllerEx) c).getMotorVelocity(port) : 0;
+            telemetry.addLine(String.format(Locale.US, "%s m%d %-14s pwr %+.2f  ticks %6d  vel %5.0f",
+                    hub.startsWith("Control") ? "CH" : "EH", port, motorName(c, port),
+                    c.getMotorPower(port), c.getMotorCurrentPosition(port), vel));
         }
     }
 
-    private void setName(Object controller, int port, boolean motor, String name) {
-        for (Port p : ports) {
-            Object c = motor ? p.motorCtrl : p.servoCtrl;
-            if (p.isMotor == motor && c == controller && p.number == port) p.configuredName = name;
+    private void showServos(int hubIdx, String hub) {
+        StringBuilder sb = new StringBuilder(hub.startsWith("Control") ? "CH servos on:" : "EH servos on:");
+        boolean any = false;
+        for (int port = 0; port < 6; port++) if (servoOn[hubIdx][port]) { sb.append(' ').append(port); any = true; }
+        if (!any) sb.append(" none");
+        telemetry.addLine(sb.toString());
+    }
+
+    private void prepareMotors(DcMotorController c) {
+        if (c == null) return;
+        for (int port = 0; port < 4; port++) {
+            c.setMotorMode(port, DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            c.setMotorZeroPowerBehavior(port, DcMotor.ZeroPowerBehavior.BRAKE);
         }
     }
 
-    private void start(Port p) {
-        if (!p.isMotor && p.servoCtrl instanceof ServoControllerEx) {
-            p.servoCtrl.setServoPosition(p.number, 0.5);
-            ((ServoControllerEx) p.servoCtrl).setServoPwmEnable(p.number);
+    private void stopAll() {
+        for (DcMotorController c : new DcMotorController[] { chMotors, ehMotors }) {
+            if (c != null) for (int port = 0; port < 4; port++) c.setMotorPower(port, 0);
+        }
+        for (ServoController c : new ServoController[] { chServos, ehServos }) {
+            if (c != null) for (int port = 0; port < 6; port++) releaseServo(c, port);
         }
     }
 
-    private void stop(Port p) {
-        if (p.isMotor) {
-            p.motorCtrl.setMotorPower(p.number, 0);
-        } else if (p.servoCtrl instanceof ServoControllerEx) {
-            // No signal: a continuous servo stops, a positional servo goes limp.
-            ((ServoControllerEx) p.servoCtrl).setServoPwmDisable(p.number);
-        } else {
-            p.servoCtrl.setServoPosition(p.number, 0.5);
-        }
+    private void releaseServo(ServoController c, int port) {
+        if (c instanceof ServoControllerEx) ((ServoControllerEx) c).setServoPwmDisable(port);
+        else c.setServoPosition(port, 0.5);
     }
 
-    private String nameOf(HardwareDevice d) {
-        Set<String> names = hardwareMap.getNamesOf(d);
-        return names.isEmpty() ? "?" : names.iterator().next();
-    }
-
-    private int hubRank(String name) {
-        String n = name.toLowerCase();
-        if (n.contains("control")) return 0;
-        if (n.contains("expansion")) return 1;
-        return 2;
-    }
-
-    private boolean hasHubNamed(String part) {
-        for (Port p : ports) if (p.hub.toLowerCase().contains(part.toLowerCase())) return true;
+    private boolean isControlHub(HardwareDevice d) {
+        for (String n : hardwareMap.getNamesOf(d)) if (n.toLowerCase().contains("control")) return true;
         return false;
+    }
+
+    private String motorName(DcMotorController c, int port) {
+        for (DcMotor m : hardwareMap.getAll(DcMotor.class)) {
+            if (m.getController() == c && m.getPortNumber() == port) {
+                for (String n : hardwareMap.getNamesOf(m)) return n;
+            }
+        }
+        return "-";
+    }
+
+    private String servoName(ServoController c, int port) {
+        for (com.qualcomm.robotcore.hardware.Servo s : hardwareMap.getAll(com.qualcomm.robotcore.hardware.Servo.class)) {
+            if (s.getController() == c && s.getPortNumber() == port) {
+                for (String n : hardwareMap.getNamesOf(s)) return n;
+            }
+        }
+        return "-";
     }
 }
