@@ -28,7 +28,7 @@ import java.util.Locale;
  *   Right stick up/down = back_left       Right stick left/right = back_right
  *
  * GAMEPAD 2 - mechanisms
- *   Left stick up/down = launche_mtr      Right stick up/down = intake_mtr
+ *   Left stick up/down = launcher_mtr      Right stick up/down = intake_mtr
  *   Hold X = servo_left    Hold B = servo_right    Hold Y = servo_windmill
  *
  * Either gamepad: LEFT TRIGGER reverses a servo, RIGHT TRIGGER allows 100% motor power.
@@ -38,9 +38,9 @@ import java.util.Locale;
 @TeleOp(name = "Config Name Test", group = "Test")
 public class ConfigNameTest extends LinearOpMode {
 
-    // Names exactly as saved in the Driver Station configuration "Apex-1" (2026-10-12).
+    // Names exactly as saved in the Driver Station configuration "Apex-1" (2026-10-12, 19:49).
     private static final String FL = "front_left", FR = "front_right", BL = "back_left", BR = "back_right";
-    private static final String LAUNCHER = "launche_mtr", INTAKE = "intake_mtr";
+    private static final String LAUNCHER = "launcher_mtr", INTAKE = "intake_mtr";
     private static final String SERVO_LEFT = "servo_left", SERVO_RIGHT = "servo_right", WINDMILL = "servo_windmill";
 
     private static final double NORMAL_MOTOR_LIMIT = 0.5;
@@ -64,7 +64,7 @@ public class ConfigNameTest extends LinearOpMode {
         for (NamedServo s : servos) release(s);
 
         telemetry.addLine("Config Name Test. Robot on blocks!");
-        telemetry.addLine("GP1 sticks = 4 wheels. GP2 L = launche_mtr, R = intake_mtr.");
+        telemetry.addLine("GP1 sticks = 4 wheels. GP2 L = launcher_mtr, R = intake_mtr.");
         telemetry.addLine("GP2 X = servo_left, B = servo_right, Y = servo_windmill.");
         telemetry.update();
 
@@ -90,7 +90,7 @@ public class ConfigNameTest extends LinearOpMode {
             hold(windmill, gamepad2.y, reverse);
 
             telemetry.addLine("GP1: L↕ front_left  L↔ front_right  R↕ back_left  R↔ back_right");
-            telemetry.addLine("GP2: L↕ launche_mtr  R↕ intake_mtr  X servo_left  B servo_right  Y servo_windmill");
+            telemetry.addLine("GP2: L↕ launcher_mtr  R↕ intake_mtr  X servo_left  B servo_right  Y servo_windmill");
             telemetry.addLine();
             show(fl, FL); show(fr, FR); show(bl, BL); show(br, BR);
             show(launcher, LAUNCHER); show(intake, INTAKE);
