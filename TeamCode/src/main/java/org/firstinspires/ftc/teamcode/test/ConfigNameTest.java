@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode.test;
 
+import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetADCCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetADCResponse;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -52,6 +55,7 @@ public class ConfigNameTest extends LinearOpMode {
     private static final double LOG_PERIOD_S = 0.25;
 
     private boolean logNow;
+    private LynxModule controlHub, expansionHub;
 
     private static final double SWEEP_PERIOD_S = 2.0;
 
@@ -68,6 +72,9 @@ public class ConfigNameTest extends LinearOpMode {
         NamedServo left = servo(SERVO_LEFT), right = servo(SERVO_RIGHT), windmill = servo(WINDMILL);
         NamedServo[] servos = { left, right, windmill };
         for (NamedServo s : servos) release(s);
+        for (LynxModule m : hardwareMap.getAll(LynxModule.class)) {
+            if (m.isParent()) controlHub = m; else expansionHub = m;
+        }
 
         telemetry.addLine("Config Name Test. Robot on blocks!");
         telemetry.addLine("GP1 sticks = 4 wheels. GP2 L = launcher_mtr, R = intake_mtr.");
@@ -100,6 +107,14 @@ public class ConfigNameTest extends LinearOpMode {
             telemetry.addLine();
             show(fl, FL); show(fr, FR); show(bl, BL); show(br, BR);
             show(launcher, LAUNCHER); show(intake, INTAKE);
+            int chServoMa = servoCurrentMa(controlHub), ehServoMa = servoCurrentMa(expansionHub);
+            telemetry.addLine(String.format(Locale.US,
+                    "Servo power draw: Control Hub %d mA, Expansion Hub %d mA", chServoMa, ehServoMa));
+            boolean anyServoOn = left.on || right.on || windmill.on;
+            if (anyServoOn && logNow) {
+                RobotLog.ii(TAG, "SERVOCURRENT CH=%d mA EH=%d mA left=%b right=%b windmill=%b",
+                        chServoMa, ehServoMa, left.on, right.on, windmill.on);
+            }
             for (NamedServo s : servos) {
                 telemetry.addLine(String.format(Locale.US, "%-15s %s", s.name,
                         s.servo == null ? "NOT FOUND in configuration" : (s.on ? String.format(Locale.US, "MOVING cmd %.2f", s.servo.getPosition()) : "idle") + "  " + where(s.servo)));
@@ -167,6 +182,19 @@ public class ConfigNameTest extends LinearOpMode {
         if (m == null) { telemetry.addLine(String.format(Locale.US, "%-15s NOT FOUND in configuration", name)); return; }
         telemetry.addLine(String.format(Locale.US, "%-15s pwr %+.2f  vel %5.0f  %.1f A  %s", name, m.getPower(),
                 m.getVelocity(), m.getCurrent(CurrentUnit.AMPS), where(m)));
+    }
+
+    /** Total current drawn by all servo ports on one hub, in mA. -1 if it can't be read. */
+    private int servoCurrentMa(LynxModule hub) {
+        if (hub == null) return -1;
+        try {
+            LynxGetADCCommand cmd = new LynxGetADCCommand(hub,
+                    LynxGetADCCommand.Channel.SERVO_CURRENT, LynxGetADCCommand.Mode.ENGINEERING);
+            LynxGetADCResponse r = cmd.sendReceive();
+            return r.getValue();
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     /** "Control Hub port 2" style location, from the device's own controller. */
