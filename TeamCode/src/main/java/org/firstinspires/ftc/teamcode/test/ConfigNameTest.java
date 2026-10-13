@@ -32,7 +32,12 @@ import java.util.Locale;
  *
  * GAMEPAD 2 - mechanisms
  *   Left stick up/down = launcher_mtr      Right stick up/down = intake_mtr
- *   Hold X = servo_left    Hold B = servo_right    Hold Y = servo_windmill
+ *   Hold X or D-pad LEFT  = servo_left
+ *   Hold B or D-pad RIGHT = servo_right
+ *   Hold Y or D-pad UP    = servo_windmill
+ *
+ * Every button press on either gamepad is logged (tag "NameTest", line "BUTTONS"), to show
+ * exactly which buttons reach the robot.
  *
  * Holding a servo button SWEEPS the servo back and forth across its whole range every
  * 2 seconds, so any servo visibly moves: a standard-mode servo swings to each end, a
@@ -55,6 +60,7 @@ public class ConfigNameTest extends LinearOpMode {
     private static final double LOG_PERIOD_S = 0.25;
 
     private boolean logNow;
+    private String lastButtons1 = "", lastButtons2 = "";
     private LynxModule controlHub, expansionHub;
 
     private static final double SWEEP_PERIOD_S = 2.0;
@@ -98,12 +104,20 @@ public class ConfigNameTest extends LinearOpMode {
             drive(launcher, LAUNCHER, -gamepad2.left_stick_y, limit);
             drive(intake, INTAKE, -gamepad2.right_stick_y, limit);
 
-            hold(left, gamepad2.x, reverse);
-            hold(right, gamepad2.b, reverse);
-            hold(windmill, gamepad2.y, reverse);
+            hold(left, gamepad2.x || gamepad2.dpad_left, reverse);
+            hold(right, gamepad2.b || gamepad2.dpad_right, reverse);
+            hold(windmill, gamepad2.y || gamepad2.dpad_up, reverse);
+
+            String b1 = buttons(gamepad1), b2 = buttons(gamepad2);
+            if (!b1.equals(lastButtons1) || !b2.equals(lastButtons2)) {
+                RobotLog.ii(TAG, "BUTTONS gp1=[%s] gp2=[%s]", b1, b2);
+                lastButtons1 = b1; lastButtons2 = b2;
+            }
 
             telemetry.addLine("GP1: L↕ front_left  L↔ front_right  R↕ back_left  R↔ back_right");
-            telemetry.addLine("GP2: L↕ launcher_mtr  R↕ intake_mtr  X servo_left  B servo_right  Y servo_windmill");
+            telemetry.addLine("GP2: L↕ launcher_mtr  R↕ intake_mtr");
+            telemetry.addLine("GP2: X or D-pad ← servo_left   B or D-pad → servo_right   Y or D-pad ↑ windmill");
+            telemetry.addLine("Buttons now  GP1: " + lastButtons1 + "   GP2: " + lastButtons2);
             telemetry.addLine();
             show(fl, FL); show(fr, FR); show(bl, BL); show(br, BR);
             show(launcher, LAUNCHER); show(intake, INTAKE);
@@ -182,6 +196,18 @@ public class ConfigNameTest extends LinearOpMode {
         if (m == null) { telemetry.addLine(String.format(Locale.US, "%-15s NOT FOUND in configuration", name)); return; }
         telemetry.addLine(String.format(Locale.US, "%-15s pwr %+.2f  vel %5.0f  %.1f A  %s", name, m.getPower(),
                 m.getVelocity(), m.getCurrent(CurrentUnit.AMPS), where(m)));
+    }
+
+    /** Names of the buttons currently held on a gamepad, e.g. "x dpad_up". */
+    private static String buttons(com.qualcomm.robotcore.hardware.Gamepad g) {
+        StringBuilder sb = new StringBuilder();
+        if (g.a) sb.append("a "); if (g.b) sb.append("b "); if (g.x) sb.append("x "); if (g.y) sb.append("y ");
+        if (g.dpad_up) sb.append("dpad_up "); if (g.dpad_down) sb.append("dpad_down ");
+        if (g.dpad_left) sb.append("dpad_left "); if (g.dpad_right) sb.append("dpad_right ");
+        if (g.left_bumper) sb.append("lb "); if (g.right_bumper) sb.append("rb ");
+        if (g.left_trigger > 0.5) sb.append("lt "); if (g.right_trigger > 0.5) sb.append("rt ");
+        if (g.back) sb.append("back "); if (g.start) sb.append("start "); if (g.guide) sb.append("guide ");
+        return sb.toString().trim();
     }
 
     /** Total current drawn by all servo ports on one hub, in mA. -1 if it can't be read. */
