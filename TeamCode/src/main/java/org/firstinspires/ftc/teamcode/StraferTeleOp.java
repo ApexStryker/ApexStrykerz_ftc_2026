@@ -40,10 +40,10 @@ public class StraferTeleOp extends LinearOpMode {
     @Override
     public void runOpMode() {
         // Names here must match the Driver Station robot configuration exactly.
-        frontLeft  = hardwareMap.get(DcMotor.class, "front_left");
-        frontRight = hardwareMap.get(DcMotor.class, "front_right");
-        backLeft   = hardwareMap.get(DcMotor.class, "back_left");
-        backRight  = hardwareMap.get(DcMotor.class, "back_right");
+        frontLeft  = hardwareMap.get(DcMotor.class, Constants.Config.FRONT_LEFT);
+        frontRight = hardwareMap.get(DcMotor.class, Constants.Config.FRONT_RIGHT);
+        backLeft   = hardwareMap.get(DcMotor.class, Constants.Config.BACK_LEFT);
+        backRight  = hardwareMap.get(DcMotor.class, Constants.Config.BACK_RIGHT);
 
         // On the Strafer V5 the left and right motors are mirror images of each other,
         // so one side is reversed. Front and back motors on the same side match.
