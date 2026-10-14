@@ -7,12 +7,11 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.teamcode.hardware.ContinuousServo;
 
 import java.util.Locale;
 
@@ -36,7 +35,8 @@ import java.util.Locale;
  *
  * Either gamepad: RIGHT TRIGGER allows 100% motor power (50% otherwise). A held servo button
  * sweeps the servo end to end every 2 s, so a standard-mode servo swings and a continuous-mode
- * servo spins each way; LEFT TRIGGER parks it at 0 instead. Releasing cuts the servo signal.
+ * servo spins each way; LEFT TRIGGER holds it at one end (full speed one way) instead.
+ * Releasing stops it. Servos work whether configured as "Servo" or "Continuous Rotation Servo".
  *
  * The screen and the robot log (tag "HwTest") show each device's hub and port, motor
  * readings, the Control Hub's servo current, and which buttons the robot is receiving.
@@ -49,11 +49,11 @@ public class ConfigNameTest extends LinearOpMode {
 
     private static class NamedServo {
         final String name;
-        final Servo servo;
+        final ContinuousServo servo;
         final ElapsedTime held = new ElapsedTime();
         boolean on;
 
-        NamedServo(String name, Servo servo) { this.name = name; this.servo = servo; }
+        NamedServo(String name, ContinuousServo servo) { this.name = name; this.servo = servo; }
     }
 
     private boolean logNow;
@@ -112,9 +112,10 @@ public class ConfigNameTest extends LinearOpMode {
             telemetry.addLine();
             for (int i = 0; i < motors.length; i++) show(motors[i], motorNames[i]);
             for (NamedServo s : servos) {
-                telemetry.addLine(String.format(Locale.US, "%-15s %s  %s", s.name,
-                        s.servo == null ? "" : (s.on ? String.format(Locale.US, "MOVING %.2f", s.servo.getPosition()) : "idle"),
-                        TestUtil.where(hardwareMap, s.servo)));
+                telemetry.addLine(String.format(Locale.US, "%-15s %s", s.name,
+                        !s.servo.present ? "NOT FOUND in configuration"
+                                : (s.on ? String.format(Locale.US, "MOVING %+.2f", s.servo.getPower()) : "idle")
+                                + (s.servo.configuredAsPositional() ? "  (type: Servo)" : "  (type: Continuous)")));
             }
             telemetry.addLine(String.format(Locale.US, "Control Hub servo current %d mA",
                     TestUtil.servoCurrentMa(controlHub)));
@@ -140,8 +141,9 @@ public class ConfigNameTest extends LinearOpMode {
     }
 
     private NamedServo servo(String name) {
-        Servo s = hardwareMap.tryGet(Servo.class, name);
-        RobotLog.ii(TestUtil.TAG, "NAME servo %-14s -> %s", name, TestUtil.where(hardwareMap, s));
+        ContinuousServo s = new ContinuousServo(hardwareMap, name);
+        RobotLog.ii(TestUtil.TAG, "NAME servo %-14s -> %s", name, !s.present ? "NOT FOUND"
+                : s.configuredAsPositional() ? "configured as Servo" : "configured as Continuous Rotation Servo");
         return new NamedServo(name, s);
     }
 
@@ -156,16 +158,16 @@ public class ConfigNameTest extends LinearOpMode {
     }
 
     private void hold(NamedServo s, boolean held, boolean park) {
-        if (s.servo == null) return;
+        if (!s.servo.present) return;
         if (held) {
             if (!s.on) {
                 s.held.reset();
-                if (s.servo instanceof ServoImplEx) ((ServoImplEx) s.servo).setPwmEnable();
                 RobotLog.ii(TestUtil.TAG, "NAME %s on", s.name);
             }
-            double pos = park ? 0.0 : TestUtil.sweep(s.held.seconds());
-            s.servo.setPosition(pos);
-            if (logNow) RobotLog.ii(TestUtil.TAG, "NAME %s cmd=%.2f servoCurrent=%d mA", s.name, pos,
+            // sweep() runs 0..1; as a continuous power that is -1..+1.
+            double power = park ? -1.0 : 2 * TestUtil.sweep(s.held.seconds()) - 1;
+            s.servo.setPower(power);
+            if (logNow) RobotLog.ii(TestUtil.TAG, "NAME %s power=%+.2f servoCurrent=%d mA", s.name, power,
                     TestUtil.servoCurrentMa(controlHub));
             s.on = true;
         } else if (s.on) {
@@ -175,9 +177,7 @@ public class ConfigNameTest extends LinearOpMode {
     }
 
     private void release(NamedServo s) {
-        if (s.servo == null) return;
-        if (s.servo instanceof ServoImplEx) ((ServoImplEx) s.servo).setPwmDisable();
-        else s.servo.setPosition(0.5);
+        s.servo.stop();
         s.on = false;
     }
 
