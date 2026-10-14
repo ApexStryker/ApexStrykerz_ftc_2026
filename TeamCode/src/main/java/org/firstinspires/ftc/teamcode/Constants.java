@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
@@ -19,8 +18,9 @@ public final class Constants {
     public static final Alliance DEFAULT_ALLIANCE = Alliance.RED;
 
     /**
-     * true once the goBILDA Pinpoint is installed and configured. Switches the localizer in
-     * Robot and makes the "Auto Pathed" OpMode appear on the Driver Station.
+     * We don't have the goBILDA Pinpoint yet: PinpointLocalizer is an empty stub, the Driver
+     * Station shows "MISSING: pinpoint", and position comes from the drive encoders. Set true
+     * only after PinpointLocalizer is filled in; it also makes "Auto Pathed" appear.
      */
     public static final boolean USE_PINPOINT = false;
 
@@ -111,17 +111,8 @@ public final class Constants {
         /** Drive-encoder pose is not trusted after this much travel since the last setPose. */
         public static final double MAX_TRUSTED_PATH_IN = 144.0;
 
-        // ---- goBILDA Pinpoint (on order). TODO: set when the pods are mounted. ----
-        /** Sideways offset of the X (forward) pod from the tracking center, mm, left positive. */
-        public static final double PINPOINT_X_POD_OFFSET_MM = 0.0;
-        /** Forward offset of the Y (strafe) pod from the tracking center, mm, forward positive. */
-        public static final double PINPOINT_Y_POD_OFFSET_MM = 0.0;
-        public static final GoBildaPinpointDriver.GoBildaOdometryPods PINPOINT_POD =
-                GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
-        public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_X_DIR =
-                GoBildaPinpointDriver.EncoderDirection.FORWARD;
-        public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_Y_DIR =
-                GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        // goBILDA Pinpoint settings (pod offsets, pod type, directions) go here when it arrives.
+        // See localization/PinpointLocalizer.java.
     }
 
     // =========================================================================================
@@ -244,6 +235,15 @@ public final class Constants {
         public static final double DRIVE_TIMEOUT_S = 4.0;
         /** Heading hold: power per degree of heading error. */
         public static final double HEADING_KP = 0.02;
+
+        // ---- Turns (turnLeft / turnRight in AutoBase), using the IMU ----
+        /** Turn power per degree still to go. */
+        public static final double TURN_KP = 0.015;
+        public static final double TURN_MAX_POWER = 0.5;
+        /** Below this the robot stalls instead of turning. */
+        public static final double TURN_MIN_POWER = 0.12;
+        public static final double TURN_TOLERANCE_DEG = 2.0;
+        public static final double TURN_TIMEOUT_S = 3.0;
 
         // ---- Auto Pathed (only with USE_PINPOINT) ----
         /** Waypoints {x in, y in, heading deg}, field frame relative to the start pose. */

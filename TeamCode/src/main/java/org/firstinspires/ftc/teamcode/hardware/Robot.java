@@ -59,6 +59,8 @@ public class Robot {
         }
         imu = found;
 
+        // The Pinpoint is not here yet and PinpointLocalizer is an empty stub, so by default
+        // position comes from the drive encoders and the IMU.
         localizer = Constants.USE_PINPOINT
                 ? new PinpointLocalizer(hw)
                 : new DriveEncoderLocalizer(drive, imu);
@@ -101,6 +103,8 @@ public class Robot {
             t.addLine("not fitted: " + Constants.Config.WINDMILL_INDEX + " (timed windmill steps)");
         if (windmill.configuredAsPositional() || flower.configuredAsPositional())
             t.addLine("NOTE: change servo config type to Continuous Rotation Servo");
+        if (!Constants.USE_PINPOINT)
+            t.addLine("MISSING: " + Constants.Config.PINPOINT + " (odometry stub; position from drive encoders)");
         if (!localizer.isTrusted()) t.addLine("localizer not trusted: " + localizer.name());
     }
 }

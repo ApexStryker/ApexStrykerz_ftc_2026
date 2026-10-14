@@ -13,7 +13,8 @@ All code lives in `TeamCode/src/main/java/org/firstinspires/ftc/teamcode/`.
 | Motor Direction Test | Test | Checking wheel directions and the IMU after any rebuild. |
 | Launcher Tuner | Test | Finding launcher speeds and PIDF on the practice field. |
 | Config Name Test | Test | Checking every configuration name moves the right part. |
-| Auto Pathed | Autonomous | Appears only once the Pinpoint is installed (`USE_PINPOINT = true`). |
+| Auto Example | Autonomous | Hidden (`@Disabled`). A longer step-by-step plan to learn from. |
+| Auto Pathed | Autonomous | Appears only once the Pinpoint is installed and `PinpointLocalizer` is written (`USE_PINPOINT = true`). |
 | Hardware Port Test | Test | Hidden. Probing ports by number after rewiring. |
 
 ## Driving: Main TeleOp
@@ -48,7 +49,7 @@ and the intake stopped itself. Hub LEDs are green when ready, yellow while spinn
 ## How it fits together
 
 ```
-opmodes/  MainTeleOp, AutoBasic, AutoPathed, StraferTeleOp
+opmodes/  MainTeleOp, AutoBase (+ AutoBasic, AutoExample), AutoPathed, StraferTeleOp
               |  each builds one:
 hardware/ Robot ── Drivetrain        mecanum math (the only copy)
             ├──── BallPath ─┬─ Intake        roller bar
@@ -57,7 +58,7 @@ hardware/ Robot ── Drivetrain        mecanum math (the only copy)
             │               ├─ FlowerWheels  front lateral wheels
             │               └─ BallSensor    intake color sensor (optional)
             ├──── IMU
-            └──── Localizer: DriveEncoderLocalizer today, PinpointLocalizer later
+            └──── Localizer: DriveEncoderLocalizer today; PinpointLocalizer is an empty stub
 Constants   every configuration name and tuning number
 ```
 
@@ -66,9 +67,29 @@ Constants   every configuration name and tuning number
 - **BallPath** is the coordinator. The operator says what they want (collect, fire, flower,
   clear); BallPath decides what each motor and servo does, so they never fight. Its one hard
   rule: **the windmill never feeds a ball unless the launcher is at speed.**
-- **Localizer** is the slot the Pinpoint plugs into. Today position comes from the drive
-  encoders and heading from the IMU; when the Pinpoint arrives, flipping `USE_PINPOINT` is the
-  only change.
+- **Localizer** is the slot the Pinpoint plugs into. We don't have the Pinpoint yet, so
+  `PinpointLocalizer` is an empty stub and the Driver Station shows `MISSING: pinpoint`.
+  Position comes from the drive encoders and heading from the IMU. When the Pinpoint arrives,
+  fill in the stub (its comment lists the steps), then set `USE_PINPOINT = true`.
+
+## Autonomous
+
+No one touches the gamepads after START. During INIT, gamepad 1 D-pad left/right picks the
+alliance. An autonomous is a list of steps in `runSteps()`; `AutoBase` provides them:
+
+| Step | What the robot does |
+|---|---|
+| `driveForward(24)` / `driveBackward(24)` | Drive straight, inches, holding its heading |
+| `strafeRight(12)` / `strafeLeft(12)` | Slide sideways, inches |
+| `turnLeft(90)` / `turnRight(90)` | Turn on the spot, degrees, using the IMU |
+| `intakeOn()` / `intakeOff()` | Start or stop collecting; collecting continues during the next steps |
+| `fire(4)` | Spin up and shoot up to 4 balls |
+| `pause(1.5)` | Wait, seconds, with everything still running |
+
+Moves are measured from where the robot is, facing the way it faces. To make a new
+autonomous, copy `AutoBasic.java`, rename the class and the `@Autonomous` name, and change the
+steps. `AutoExample.java` shows a longer plan that mirrors itself for the blue alliance. Distances
+come from the drive encoders, which slip a little, so measure on the practice field and adjust.
 
 ## BallPath modes
 
