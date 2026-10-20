@@ -106,4 +106,10 @@ public class DriveEncoderLocalizer implements Localizer {
 
     @Override
     public String name() { return "drive encoders + IMU"; }
+
+    @Override
+    public String debugInfo() {
+        return String.format("%.0f in driven since last reset (trusted up to %.0f)%s", pathSinceReset,
+                Constants.Odometry.MAX_TRUSTED_PATH_IN, imu == null ? ", NO IMU" : "");
+    }
 }

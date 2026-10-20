@@ -28,4 +28,7 @@ public interface Localizer {
 
     /** Short name for telemetry. */
     String name();
+
+    /** Extra detail for the debug page (raw counts, status). */
+    default String debugInfo() { return ""; }
 }

@@ -7,44 +7,52 @@ All code lives in `TeamCode/src/main/java/org/firstinspires/ftc/teamcode/`.
 
 | OpMode | Type | Use it for |
 |---|---|---|
-| **Main TeleOp** | TeleOp | Matches. Two drivers. |
+| **Main TeleOp** | TeleOp | Matches. Two drivers; the operator runs the ball path by hand (same controls as Ball Path Test, without ±25). |
 | **Auto Basic** | Autonomous | Matches. Leaves the wall; can fire the preloads. Picks Main TeleOp next. |
 | Strafer TeleOp | TeleOp | Drive-only fallback when something else misbehaves. |
 | Motor Direction Test | Test | Checking wheel directions and the IMU after any rebuild. |
 | Launcher Tuner | Test | Finding launcher speeds and PIDF on the practice field. |
+| Pinpoint Test | Test | Setting up the goBILDA Pinpoint: status in words, x / y / heading, raw pod counts, the four checks. Works before `USE_PINPOINT` is on. |
+| Ball Path Test | Test | Main TeleOp's controls plus D-pad right/left = launcher speed ±25 tps, for tuning. Camera (optional, `webcam`): live picture on the Driver Station during INIT, and the HIVE AprilTags it sees with the nearest one's distance. |
 | Config Name Test | Test | Checking every configuration name moves the right part. |
 | Auto Example | Autonomous | Hidden (`@Disabled`). A longer step-by-step plan to learn from. |
 | Auto Pathed | Autonomous | Appears only once the Pinpoint is installed and `PinpointLocalizer` is written (`USE_PINPOINT = true`). |
 | Hardware Port Test | Test | Hidden. Probing ports by number after rewiring. |
+| Smart Fire TeleOp | TeleOp | Hidden (`@Disabled`), parked. The first Main TeleOp: BallPath fires one ball per windmill step once the launcher is back at speed, with the automatic 4-ball stop and NECTAR reject. Comes back once the windmill index sensor makes each 90° step exact. |
 
 ## Driving: Main TeleOp
 
-**During INIT:** D-pad left = red alliance, D-pad right = blue alliance. The robot needs this
-to spit out the other alliance's NECTAR.
+**During INIT:** D-pad left = red alliance, D-pad right = blue alliance.
 
-**Gamepad 1, driver**
+**Gamepad 1, driver** (`opmodes/DriverControls.java`)
 
 | Control | Action |
 |---|---|
-| Left stick | Drive and strafe. Field-centric: up always moves away from you. |
+| Left stick | Drive and strafe. Robot-centric for now: up = the way the robot faces. |
 | Right stick X | Rotate |
-| Hold left bumper | Robot-centric instead |
 | Hold left trigger | Precision, 40% speed |
+| Hold left bumper | Robot-centric instead (matters once field-centric is back on) |
 | Options | Re-zero field-centric. Point the robot away from you first. |
+| Share | Debug page on / off |
 
-**Gamepad 2, operator**
+Field-centric (up always moves away from you) comes back by setting
+`Constants.Drive.FIELD_CENTRIC_DEFAULT = true` once the IMU check passes.
+
+**Gamepad 2, operator** (`opmodes/OperatorControls.java`, shared with Ball Path Test)
 
 | Control | Action |
 |---|---|
-| Right bumper | Intake on / off |
-| Hold left bumper | Clear a jam: intake and windmill run backward |
-| Left trigger | Launcher spin up / down |
-| Hold right trigger | Fire. One ball each time the launcher is back at speed. |
-| Hold cross (A) | Flower mode: pull POLLEN out of a flower's bottom opening |
-| D-pad up / down | Launcher speed preset: near / far |
+| Hold right bumper | Intake and side wheels pull in, while held |
+| Cross (A) | Intake and side wheels on / off |
+| Right stick up / down | Intake, side wheels and windmill together, as fast as pushed: up = toward the launcher, down = push balls out |
+| Hold right trigger | Shoot: launcher spins up, then the windmill turns once it is at speed (2 s at most) |
+| Left trigger | Launcher on / off |
+| Left bumper | Windmill on / off |
+| D-pad up / down | Launcher speed +100 / −100 tps |
+| Circle (B) | Jump to the other speed preset (near / far) |
 
-Feedback: a short rumble means the launcher is ready; a long rumble means the robot holds 4 balls
-and the intake stopped itself. Hub LEDs are green when ready, yellow while spinning up, blue when idle.
+Feedback: a short rumble means the launcher is ready. Hub LEDs are green when ready, yellow while
+spinning up, blue when idle.
 
 ## How it fits together
 
@@ -67,10 +75,11 @@ Constants   every configuration name and tuning number
 - **BallPath** is the coordinator. The operator says what they want (collect, fire, flower,
   clear); BallPath decides what each motor and servo does, so they never fight. Its one hard
   rule: **the windmill never feeds a ball unless the launcher is at speed.**
-- **Localizer** is the slot the Pinpoint plugs into. We don't have the Pinpoint yet, so
-  `PinpointLocalizer` is an empty stub and the Driver Station shows `MISSING: pinpoint`.
-  Position comes from the drive encoders and heading from the IMU. When the Pinpoint arrives,
-  fill in the stub (its comment lists the steps), then set `USE_PINPOINT = true`.
+- **Localizer** is the slot the Pinpoint plugs into. `PinpointLocalizer` is written but off
+  (`USE_PINPOINT = false`), so position still comes from the drive encoders and heading from
+  the IMU. To switch over: mount the pods, add `pinpoint` on I2C bus 1, put pod type and
+  offsets in `Constants.Odometry`, pass the four checks in *Pinpoint Test*, then set
+  `USE_PINPOINT = true`.
 
 ## Autonomous
 
@@ -90,6 +99,22 @@ Moves are measured from where the robot is, facing the way it faces. To make a n
 autonomous, copy `AutoBasic.java`, rename the class and the `@Autonomous` name, and change the
 steps. `AutoExample.java` shows a longer plan that mirrors itself for the blue alliance. Distances
 come from the drive encoders, which slip a little, so measure on the practice field and adjust.
+
+## Debugging
+
+Two tools, both in every OpMode that uses `Robot` (`util/Debug.java` explains them):
+
+- **Debug page.** Press **SHARE on gamepad 1** in Main TeleOp or Ball Path Test: the Driver
+  Station shows every part at once (loop time, battery, drive powers and counts, intake current,
+  launcher target and actual speed, windmill, BallPath mode, ball count, position, missing
+  devices). Press SHARE again to go back.
+- **Event log.** Parts write one line to the robot log, tag `Apex`, when something changes:
+  BallPath mode changes, every shot and empty feed, balls in, rejected NECTAR, launcher at speed
+  or off speed, windmill step timeouts, Pinpoint status, localizer trust, low battery
+  (below 11.5 V) and slow loops (over 60 ms). Read it live with `adb logcat -s Apex`, or after a
+  session with `bash tools/robot-sync.sh --logs-only` (saved in `robot-sync/logs/`).
+
+Thresholds live in `Constants.Debug`. Log when something changes, never every loop.
 
 ## BallPath modes
 

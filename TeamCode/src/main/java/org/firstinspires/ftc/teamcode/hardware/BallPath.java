@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.hardware;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.util.Debug;
 
 /**
  * Coordinates intake, windmill, launcher and flower wheels so they never fight each other.
@@ -82,6 +83,7 @@ public class BallPath {
         else next = Mode.IDLE;
 
         if (next != mode) {
+            Debug.log("BallPath: %s -> %s", mode, next);
             if (mode == Mode.FIRE) { launcher.disarmShot(); fireStep = FireStep.WAIT_SPEED; }
             mode = next;
         }
@@ -119,7 +121,7 @@ public class BallPath {
         if (ready && !lastReady) readyEvent = true;
         lastReady = ready;
         boolean full = isFull();
-        if (full && !lastFull) fullEvent = true;
+        if (full && !lastFull) { fullEvent = true; Debug.log("BallPath: full, %d balls", ballCount); }
         lastFull = full;
     }
 
@@ -128,9 +130,11 @@ public class BallPath {
         if (BallSensor.isOpponentNectar(sensor.getBall(), alliance)) {
             rejecting = true;          // rule G408: spit it straight back out, do not count it
             rejectEvent = true;
+            Debug.log("BallPath: rejecting opponent %s", sensor.getBall());
             rejectTimer.reset();
         } else if (intake.getPower() > 0) {
             ballCount = Math.min(Constants.BallSensor.MAX_BALLS + 1, ballCount + 1);
+            Debug.log("BallPath: ball in (%s), count %d", sensor.getBall(), ballCount);
         } else if (intake.getPower() < 0) {
             ballCount = Math.max(0, ballCount - 1);
         }
@@ -161,6 +165,8 @@ public class BallPath {
                 } else if (fireTimer.milliseconds() >= Constants.Launcher.SHOT_TIMEOUT_MS) {
                     launcher.disarmShot();   // nothing went through: empty pocket
                     emptyFeeds++;
+                    Debug.log("BallPath: empty feed, no shot within %.0f ms (empty pockets %d)",
+                            Constants.Launcher.SHOT_TIMEOUT_MS, emptyFeeds);
                     fireStep = FireStep.WAIT_RECOVER;
                 }
                 break;
@@ -173,6 +179,7 @@ public class BallPath {
     private FireStep afterShot() {
         shotThisFeed = false;
         shotsFired++;
+        Debug.log("BallPath: shot %d, launcher dipped to %.0f tps", shotsFired, launcher.getVelocityTps());
         if (sensor.present) ballCount = Math.max(0, ballCount - 1);
         return FireStep.WAIT_RECOVER;
     }
