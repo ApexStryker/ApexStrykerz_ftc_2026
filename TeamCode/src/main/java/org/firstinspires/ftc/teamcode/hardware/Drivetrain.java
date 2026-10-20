@@ -20,6 +20,7 @@ public class Drivetrain {
     /** All four drive motors were found. */
     public final boolean present;
     private final DcMotorEx[] motors;
+    private final double[] lastPowers = new double[4];
 
     public Drivetrain(HardwareMap hw) {
         frontLeft = init(hw, Constants.Config.FRONT_LEFT, Constants.Drive.FRONT_LEFT_DIR);
@@ -74,6 +75,7 @@ public class Drivetrain {
     }
 
     public void setPowers(double fl, double fr, double bl, double br) {
+        lastPowers[0] = fl; lastPowers[1] = fr; lastPowers[2] = bl; lastPowers[3] = br;
         if (frontLeft != null) frontLeft.setPower(fl);
         if (frontRight != null) frontRight.setPower(fr);
         if (backLeft != null) backLeft.setPower(bl);
@@ -83,6 +85,9 @@ public class Drivetrain {
     public void stop() { setPowers(0, 0, 0, 0); }
 
     /** Encoder counts in the order front left, front right, back left, back right (0 if missing). */
+    /** Last powers sent, front left, front right, back left, back right (for the debug page). */
+    public double[] getPowers() { return lastPowers.clone(); }
+
     public int[] getPositions() {
         int[] out = new int[4];
         for (int i = 0; i < 4; i++) out[i] = motors[i] == null ? 0 : motors[i].getCurrentPosition();

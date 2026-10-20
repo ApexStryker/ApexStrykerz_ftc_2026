@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Constants;
+import org.firstinspires.ftc.teamcode.util.Debug;
 
 /**
  * The 4-blade windmill that feeds one ball into the launcher per quarter turn.
@@ -61,6 +62,7 @@ public class Windmill {
     }
 
     private void finishStep(boolean timedOut) {
+        if (timedOut) Debug.warn("windmill: step timed out, no index magnet seen in %.0f ms", Constants.Windmill.STEP_TIMEOUT_MS);
         stepping = false;
         lastStepTimedOut = timedOut;
         stepsDone++;
@@ -74,6 +76,20 @@ public class Windmill {
     }
 
     /** Turn backward continuously, for clearing a jam. Cancels any step. */
+    /** Spin continuously in the feed direction until hold() (used by Ball Path Test). */
+    public void run() { drive(1.0); }
+
+    /**
+     * Spin continuously until hold(): fraction 0..1 of FEED_SPEED toward the launcher, or 0..-1
+     * of REVERSE_SPEED backward (used by Ball Path Test's right stick).
+     */
+    public void drive(double fraction) {
+        stepping = false;
+        reversing = fraction < 0;
+        servo.setPower(fraction >= 0 ? Constants.Windmill.FEED_SPEED * fraction
+                : Constants.Windmill.REVERSE_SPEED * -fraction);
+    }
+
     public void reverse() {
         stepping = false;
         reversing = true;

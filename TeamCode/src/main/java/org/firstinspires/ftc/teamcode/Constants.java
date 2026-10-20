@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
@@ -18,9 +19,9 @@ public final class Constants {
     public static final Alliance DEFAULT_ALLIANCE = Alliance.RED;
 
     /**
-     * We don't have the goBILDA Pinpoint yet: PinpointLocalizer is an empty stub, the Driver
-     * Station shows "MISSING: pinpoint", and position comes from the drive encoders. Set true
-     * only after PinpointLocalizer is filled in; it also makes "Auto Pathed" appear.
+     * false: position comes from the drive encoders. Set true once the goBILDA Pinpoint is
+     * mounted, its settings in Constants.Odometry are measured, and Pinpoint Test passes all
+     * four checks. true also makes "Auto Pathed" appear on the Driver Station.
      */
     public static final boolean USE_PINPOINT = false;
 
@@ -58,6 +59,7 @@ public final class Constants {
         public static final String INTAKE_COLOR = "intake_color"; // REV Color Sensor V3, CH I2C
         public static final String WINDMILL_INDEX = "windmill_index"; // REV magnetic limit switch, digital
         public static final String PINPOINT = "pinpoint";         // goBILDA Pinpoint, I2C (on order)
+        public static final String WEBCAM = "webcam";             // Logitech C615, Control Hub USB
     }
 
     // =========================================================================================
@@ -78,9 +80,11 @@ public final class Constants {
     public static final class Drive {
         private Drive() {}
 
-        // TODO(Wed): set from Motor Direction Test on the rebuilt chassis. These are master's
-        // original values. Every wheel must roll the robot FORWARD on positive power.
-        public static final DcMotorSimple.Direction FRONT_LEFT_DIR = DcMotorSimple.Direction.REVERSE;
+        // Every wheel must roll the robot FORWARD on positive power. FRONT_LEFT_DIR checked on
+        // the robot 2026-10-19 (was REVERSE, ran backward). TODO: confirm the other three with
+        // Motor Direction Test. (2026-10-19: back_right's motor turned but its gears were not
+        // meshing, so the wheel stood still; a mechanical fix, not a code one.)
+        public static final DcMotorSimple.Direction FRONT_LEFT_DIR = DcMotorSimple.Direction.FORWARD;
         public static final DcMotorSimple.Direction FRONT_RIGHT_DIR = DcMotorSimple.Direction.FORWARD;
         public static final DcMotorSimple.Direction BACK_LEFT_DIR = DcMotorSimple.Direction.REVERSE;
         public static final DcMotorSimple.Direction BACK_RIGHT_DIR = DcMotorSimple.Direction.FORWARD;
@@ -96,12 +100,50 @@ public final class Constants {
          */
         public static final double LATERAL_MULTIPLIER = 1.0;
 
-        public static final boolean FIELD_CENTRIC_DEFAULT = true;
+        /**
+         * false = robot-centric (stick up = the way the robot faces), exactly like the old Strafer
+         * TeleOp. Field-centric needs a correct Constants.Hub, which is not checked yet: on
+         * 2026-10-19 field-centric drove wrongly while Strafer TeleOp drove right.
+         * TODO: set true once Motor Direction Test shows yaw going UP when turning left.
+         */
+        public static final boolean FIELD_CENTRIC_DEFAULT = false;
         /** Output while the driver holds the precision trigger. */
         public static final double PRECISION_SCALE = 0.4;
         /** Output cap while Flower mode is active, for gentle lining up. */
         public static final double FLOWER_SCALE = 0.35;
         public static final double TEST_POWER = 0.3;
+    }
+
+    // =========================================================================================
+    /** Debugging (util/Debug.java): what counts as worth a line in the robot log. */
+    public static final class Debug {
+        private Debug() {}
+
+        /** Loops slower than this are logged; normal is well under 20 ms. */
+        public static final double SLOW_LOOP_MS = 60;
+        /** Battery below this is logged as a warning: a sagging battery can reset the hubs. */
+        public static final double LOW_BATTERY_V = 11.5;
+        /** How often to read the battery; each read takes a moment, so not every loop. */
+        public static final double BATTERY_CHECK_MS = 1000;
+    }
+
+    // =========================================================================================
+    /** The webcam, mounted looking up at the AprilTags under the HIVE cells. */
+    public static final class Camera {
+        private Camera() {}
+
+        public static final int WIDTH = 640, HEIGHT = 480;
+        /**
+         * Lens calibration at 640x480, in pixels. The SDK has none for our Logitech C615, so
+         * these are its built-in C920 values (a very similar lens). Tag IDs are exact; distances
+         * and angles are approximate until we calibrate the C615. TODO: calibrate and replace.
+         */
+        public static final double FX = 622.001, FY = 622.001, CX = 319.803, CY = 241.251;
+
+        /** HIVE cell AprilTags (manual section 9): family 36h11, 3.25 in, facing the tiles. */
+        public static final double TAG_SIZE_IN = 3.25;
+        public static final int RED_FIRST_ID = 30, RED_LAST_ID = 37;
+        public static final int BLUE_FIRST_ID = 38, BLUE_LAST_ID = 45;
     }
 
     // =========================================================================================
@@ -111,8 +153,28 @@ public final class Constants {
         /** Drive-encoder pose is not trusted after this much travel since the last setPose. */
         public static final double MAX_TRUSTED_PATH_IN = 144.0;
 
-        // goBILDA Pinpoint settings (pod offsets, pod type, directions) go here when it arrives.
-        // See localization/PinpointLocalizer.java.
+        // ---- goBILDA Pinpoint (arrived 2026-10-19; see the Pinpoint slides in the deck) ----
+        /**
+         * Which goBILDA pods are in the kit. TODO: check the box: 4-Bar pod or Swingarm pod.
+         * Wrong type = every distance off by the same factor (tape-measure check finds it).
+         */
+        public static final GoBildaPinpointDriver.GoBildaOdometryPods PINPOINT_POD =
+                GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
+        /**
+         * "A": how far SIDEWAYS the X (forward-rolling) pod is from the robot's centre, mm.
+         * Left of centre +, right of centre -. TODO: measure once the pods are mounted.
+         */
+        public static final double PINPOINT_X_POD_OFFSET_MM = 0.0;
+        /**
+         * "B": how far FORWARD the Y (sideways-rolling) pod is from the robot's centre, mm.
+         * In front of centre +, behind -. TODO: measure once the pods are mounted.
+         */
+        public static final double PINPOINT_Y_POD_OFFSET_MM = 0.0;
+        /** Pushing the robot forward must make x go UP, pushing it left must make y go UP. TODO: check with Pinpoint Test. */
+        public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_X_DIR =
+                GoBildaPinpointDriver.EncoderDirection.FORWARD;
+        public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_Y_DIR =
+                GoBildaPinpointDriver.EncoderDirection.FORWARD;
     }
 
     // =========================================================================================
@@ -131,6 +193,12 @@ public final class Constants {
          */
         public static final double[] PRESETS_TPS = { 1800, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
+
+        // ---- Ball Path Test: adjusting the speed live with the D-pad ----
+        public static final double COARSE_STEP_TPS = 100;
+        public static final double FINE_STEP_TPS = 25;
+        /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
+        public static final double MAX_TPS = 2800;
 
         /** Ready when within this many tps of target... */
         public static final double READY_TOLERANCE_TPS = 60;
@@ -164,6 +232,8 @@ public final class Constants {
         public static final double OUT_POWER = -0.8;
         /** Gentle push while firing, to keep the queue pressed against the windmill. */
         public static final double FEED_POWER = 0.35;
+        /** Ball Path Test: the right stick does nothing until pushed this far from the middle. */
+        public static final double STICK_DEADZONE = 0.15;
     }
 
     // =========================================================================================
@@ -172,16 +242,22 @@ public final class Constants {
 
         /**
          * Continuous-servo speed for one feed step. Its SIGN is the feed direction (the windmill
-         * turns clockwise to feed). TODO(Wed): if it turns away from the launcher, negate it.
+         * turns clockwise to feed). Negative since 2026-10-17: positive turned it the wrong way
+         * on the robot. REVERSE_SPEED must always have the opposite sign.
          */
-        public static final double FEED_SPEED = 0.6;
-        public static final double REVERSE_SPEED = -0.4;
+        public static final double FEED_SPEED = -0.6;
+        public static final double REVERSE_SPEED = 0.4;
         /** Without the index switch: run this long for one quarter turn. TODO(Wed): tune. */
         public static final double STEP_MS = 350;
         /** With the index switch: stop the step if no blade arrives in this time. */
         public static final double STEP_TIMEOUT_MS = 900;
         /** REV magnetic limit switch reads false when a magnet is present. */
         public static final boolean INDEX_ACTIVE_LOW = true;
+        /**
+         * Ball Path Test: when shooting, the windmill waits for the launcher to reach speed, but
+         * starts anyway after this long (e.g. if the speed preset is too high to reach).
+         */
+        public static final double SHOOT_MAX_WAIT_S = 2.0;
     }
 
     // =========================================================================================

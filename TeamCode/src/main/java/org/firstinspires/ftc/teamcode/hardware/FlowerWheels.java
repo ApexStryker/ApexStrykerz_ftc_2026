@@ -28,6 +28,13 @@ public class FlowerWheels {
         right.setPower(Constants.FlowerWheels.RIGHT_IN);
     }
 
+    /** fraction 0..1 pulls inward at that share of full speed, 0..-1 pushes outward (Ball Path Test). */
+    public void drive(double fraction) {
+        running = fraction != 0;
+        left.setPower(Constants.FlowerWheels.LEFT_IN * fraction);
+        right.setPower(Constants.FlowerWheels.RIGHT_IN * fraction);
+    }
+
     public void stop() {
         running = false;
         left.stop();
