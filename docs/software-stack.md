@@ -13,6 +13,8 @@ All code lives in `TeamCode/src/main/java/org/firstinspires/ftc/teamcode/`.
 | Motor Direction Test | Test | Checking wheel directions and the IMU after any rebuild. |
 | Launcher Tuner | Test | Finding launcher speeds and PIDF on the practice field. |
 | Pinpoint Test | Test | Setting up the goBILDA Pinpoint: status in words, x / y / heading, raw pod counts, the four checks. Works before `USE_PINPOINT` is on. |
+| Odometry Check | Test | Guided Pinpoint test with PASS / FAIL and what to change: connected, stays put, push forward / left by hand, spin twice on the spot (offset error estimate, Pinpoint vs Control Hub IMU). |
+| Odometry Path Test | Autonomous (Test) | The robot drives a path by itself on the Pinpoint (square, diamond, square with turns, 8 ft field loop; 1-5 laps) and returns to a tape mark: measure how far off it ends. Any button stops it; it also stops itself if it drives the wrong way or leaves the path's box. |
 | Ball Path Test | Test | Main TeleOp's controls plus D-pad right/left = launcher speed ±25 tps, for tuning. Camera (optional, `webcam`): live picture on the Driver Station during INIT, and the HIVE AprilTags it sees with the nearest one's distance. |
 | Config Name Test | Test | Checking every configuration name moves the right part. |
 | Auto Example | Autonomous | Hidden (`@Disabled`). A longer step-by-step plan to learn from. |
