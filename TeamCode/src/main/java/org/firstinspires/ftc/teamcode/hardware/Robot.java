@@ -67,12 +67,7 @@ public class Robot {
         ballSensor = new BallSensor(hw);
         ballPath = new BallPath(intake, windmill, launcher, flower, ballSensor);
 
-        IMU found = hw.tryGet(IMU.class, Constants.Config.IMU);
-        if (found != null) {
-            found.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(Constants.Hub.LOGO, Constants.Hub.USB)));
-            found.resetYaw();
-        }
-        imu = found;
+        imu = initImu(hw);
 
         // Position from the drive encoders and IMU until the Pinpoint is set up and switched on.
         pinpointConfigured = hw.tryGet(GoBildaPinpointDriver.class, Constants.Config.PINPOINT) != null;
@@ -83,6 +78,16 @@ public class Robot {
         batteries = hw.getAll(VoltageSensor.class);
         batteryVolts = readBattery();
         logStartup();
+    }
+
+    /** The Control Hub IMU, set up for how the hub is mounted (Constants.Hub); null if not configured. */
+    public static IMU initImu(HardwareMap hw) {
+        IMU found = hw.tryGet(IMU.class, Constants.Config.IMU);
+        if (found != null) {
+            found.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(Constants.Hub.LOGO, Constants.Hub.USB)));
+            found.resetYaw();
+        }
+        return found;
     }
 
     /** Once per loop, before anything reads the pose or a sensor. */

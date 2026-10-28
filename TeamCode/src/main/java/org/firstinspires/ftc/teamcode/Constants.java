@@ -155,8 +155,9 @@ public final class Constants {
 
         // ---- goBILDA Pinpoint (arrived 2026-10-19; see the Pinpoint slides in the deck) ----
         /**
-         * Which goBILDA pods are in the kit. TODO: check the box: 4-Bar pod or Swingarm pod.
-         * Wrong type = every distance off by the same factor (tape-measure check finds it).
+         * Which goBILDA pods we have: the 4-Bar Odometry Pack (3203-3110-0002), confirmed
+         * 2026-10-21. Wrong type = every distance off by the same factor (tape-measure check).
+         * Installing: docs/pinpoint-install.md.
          */
         public static final GoBildaPinpointDriver.GoBildaOdometryPods PINPOINT_POD =
                 GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
@@ -175,6 +176,32 @@ public final class Constants {
                 GoBildaPinpointDriver.EncoderDirection.FORWARD;
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_Y_DIR =
                 GoBildaPinpointDriver.EncoderDirection.FORWARD;
+
+        // ---- Odometry Check (pass limits; goBILDA's guide gives the spin and return numbers) ----
+        /** Stays-put test: how long to watch, and the most drift allowed. */
+        public static final double STILL_TEST_S = 10.0;
+        public static final double STILL_MAX_DRIFT_IN = 0.2;
+        public static final double STILL_MAX_DRIFT_DEG = 0.5;
+        /** Push-by-hand direction tests: push at least this far. */
+        public static final double PUSH_MIN_IN = 6.0;
+        /** Sideways movement allowed during a push, as a share of the push. */
+        public static final double PUSH_MAX_CROSS = 0.35;
+        /** Spin test: whole turns left, power, and the time limit. */
+        public static final double SPIN_TURNS = 2.0;
+        public static final double SPIN_POWER = 0.3;
+        public static final double SPIN_TIMEOUT_S = 20.0;
+        /** Spin test: x and y may wander this far from the start (goBILDA: about 4 in). */
+        public static final double SPIN_MAX_EXCURSION_IN = 4.0;
+        /** Spin test: Pinpoint heading and Control Hub IMU heading must agree this closely. */
+        public static final double SPIN_MAX_IMU_DIFF_DEG = 2.0;
+
+        // ---- Odometry Path Test ----
+        /** Side of the square and diamond paths. */
+        public static final double TEST_SQUARE_IN = 48.0;
+        /** Side of the field loop (fits the 12 ft field from a start near a corner). */
+        public static final double TEST_FIELD_LOOP_IN = 96.0;
+        /** Back at the start, the robot should be this close to the tape mark (goBILDA: about 1/2 in). */
+        public static final double RETURN_MAX_ERROR_IN = 0.5;
     }
 
     // =========================================================================================
@@ -321,13 +348,24 @@ public final class Constants {
         public static final double TURN_TOLERANCE_DEG = 2.0;
         public static final double TURN_TIMEOUT_S = 3.0;
 
-        // ---- Auto Pathed (only with USE_PINPOINT) ----
-        /** Waypoints {x in, y in, heading deg}, field frame relative to the start pose. */
+        // ---- Path following (hardware/PathFollower: Auto Pathed, Odometry Path Test) ----
+        /** Auto Pathed waypoints {x in, y in, heading deg}, field frame relative to the start pose. */
         public static final double[][] PATH = { { 24, 0, 0 }, { 24, 24, 0 } };
+        /** Drive power per inch still to go. */
         public static final double POSITION_KP = 0.06;
         public static final double POSITION_TOLERANCE_IN = 1.0;
         public static final double HEADING_TOLERANCE_DEG = 2.0;
         public static final double PATH_MAX_POWER = 0.5;
+        /** Near the target the robot stalls below this, so it never asks for less while moving. */
+        public static final double PATH_MIN_POWER = 0.08;
+        /** Each waypoint gets this long, plus PATH_TIMEOUT_PER_IN_S for every inch of distance. */
         public static final double WAYPOINT_TIMEOUT_S = 4.0;
+        public static final double PATH_TIMEOUT_PER_IN_S = 0.05;
+        /** Stop if the distance to the target grows this far above its best: driving the wrong way. */
+        public static final double RUNAWAY_IN = 6.0;
+        /** Stop if the robot leaves the path's box by more than this. */
+        public static final double FENCE_MARGIN_IN = 12.0;
+        /** Settle at each waypoint before measuring and moving on. */
+        public static final double WAYPOINT_SETTLE_S = 0.3;
     }
 }
