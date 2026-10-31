@@ -154,10 +154,20 @@ public class OdometryPathTest extends LinearOpMode {
         for (int i = 0; i < route.size() && opModeIsActive(); i++) {
             Waypoint w = route.get(i);
             follower.start(w);
+            Pose2D pinStart = pinpoint.getPose(), encStart = encoders.getPose();
             PathFollower.Result r = PathFollower.Result.RUNNING;
             while (opModeIsActive() && r == PathFollower.Result.RUNNING) {
                 pinpoint.update();
                 encoders.update();
+                // Second opinion: if the wheels say the robot moved much further than the Pinpoint
+                // does, a pod is not tracking (not touching the floor, unplugged): stop.
+                double mismatch = moved(encoders.getPose(), encStart) - moved(pinpoint.getPose(), pinStart);
+                if (mismatch > Constants.Auto.TRACKING_MISMATCH_IN) {
+                    follower.abort();
+                    outcome = String.format("STOPPED at waypoint %d: the wheels moved %.0f in more than the Pinpoint saw "
+                            + "(a pod not touching the floor, or a cable out of the X/Y port?)", i + 1, mismatch);
+                    break;
+                }
                 double p = Math.toDegrees(pinpoint.getHeading()), im = imuDeg(imu);
                 turnP += OdometryMath.headingChange(lastP, p); lastP = p;
                 turnI += OdometryMath.headingChange(lastI, im); lastI = im;
@@ -226,9 +236,16 @@ public class OdometryPathTest extends LinearOpMode {
             case RUNAWAY: return " (driving away from the target: run Odometry Check, a direction may be flipped)";
             case OUT_OF_BOUNDS: return " (left the path's box)";
             case TIMED_OUT: return " (too slow: blocked, or power too low)";
+            case NO_PROGRESS: return " (not getting closer: is a pod touching the floor and plugged into its port?)";
             case LOST: return " (Pinpoint stopped being READY)";
             default: return "";
         }
+    }
+
+    /** Straight-line distance between two poses, inches. */
+    private static double moved(Pose2D now, Pose2D start) {
+        return Math.hypot(now.getX(DistanceUnit.INCH) - start.getX(DistanceUnit.INCH),
+                now.getY(DistanceUnit.INCH) - start.getY(DistanceUnit.INCH));
     }
 
     private static double imuDeg(IMU imu) { return imu == null ? 0 : imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES); }

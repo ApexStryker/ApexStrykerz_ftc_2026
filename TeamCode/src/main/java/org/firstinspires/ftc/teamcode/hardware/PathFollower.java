@@ -20,7 +20,8 @@ import java.util.List;
  *   while (opModeIsActive() && follower.update() == Result.RUNNING) { ... }
  *
  * Safety: it stops by itself and reports why when the target is reached (ARRIVED), time runs
- * out (TIMED_OUT), the robot gets FURTHER from the target than it has been (RUNAWAY, e.g. a pod
+ * out (TIMED_OUT), it is not getting closer after a moment of driving (NO_PROGRESS, e.g. a pod
+ * not touching the floor), it gets FURTHER from the target than it has been (RUNAWAY, e.g. a pod
  * direction flipped), it leaves the fence box (OUT_OF_BOUNDS), or the localizer stops being
  * trustworthy (LOST). Numbers live in Constants.Auto.
  *
@@ -29,7 +30,7 @@ import java.util.List;
  */
 public class PathFollower {
 
-    public enum Result { RUNNING, ARRIVED, TIMED_OUT, RUNAWAY, OUT_OF_BOUNDS, LOST }
+    public enum Result { RUNNING, ARRIVED, TIMED_OUT, NO_PROGRESS, RUNAWAY, OUT_OF_BOUNDS, LOST }
 
     /** A target: x and y in inches, heading in degrees. */
     public static final class Waypoint {
@@ -78,7 +79,7 @@ public class PathFollower {
     private final Localizer localizer;
     private final ElapsedTime timer = new ElapsedTime();
     private Waypoint target;
-    private double timeoutS, bestDist;
+    private double timeoutS, bestDist, startDist;
     private boolean fenced;
     private double fenceMinX, fenceMaxX, fenceMinY, fenceMaxY;
     private Command last;
@@ -105,6 +106,7 @@ public class PathFollower {
         target = w;
         Pose2D p = localizer.getPose();
         bestDist = Math.hypot(w.x - p.getX(DistanceUnit.INCH), w.y - p.getY(DistanceUnit.INCH));
+        startDist = bestDist;
         timeoutS = Constants.Auto.WAYPOINT_TIMEOUT_S + bestDist * Constants.Auto.PATH_TIMEOUT_PER_IN_S;
         timer.reset();
         Debug.log("path: heading for %s, %.1f in away", w, bestDist);
@@ -122,6 +124,10 @@ public class PathFollower {
         if (timer.seconds() > timeoutS) return finish(Result.TIMED_OUT);
         bestDist = Math.min(bestDist, last.distanceIn);
         if (last.distanceIn > bestDist + Constants.Auto.RUNAWAY_IN) return finish(Result.RUNAWAY);
+        // Driving but not getting closer: the localizer is not seeing the robot move.
+        if (timer.seconds() > Constants.Auto.PROGRESS_CHECK_S
+                && startDist > Constants.Auto.MIN_PROGRESS_IN + Constants.Auto.POSITION_TOLERANCE_IN
+                && startDist - bestDist < Constants.Auto.MIN_PROGRESS_IN) return finish(Result.NO_PROGRESS);
         if (fenced && (x < fenceMinX || x > fenceMaxX || y < fenceMinY || y > fenceMaxY)) return finish(Result.OUT_OF_BOUNDS);
 
         drive.driveFieldCentric(last.forward, last.right, last.yaw, localizer.getHeading(), 1.0);

@@ -367,5 +367,14 @@ public final class Constants {
         public static final double FENCE_MARGIN_IN = 12.0;
         /** Settle at each waypoint before measuring and moving on. */
         public static final double WAYPOINT_SETTLE_S = 0.3;
+        /**
+         * Stop if, after PROGRESS_CHECK_S of driving, the robot is not at least MIN_PROGRESS_IN
+         * closer to the target: e.g. a pod that does not touch the floor, so the robot never
+         * seems to move. Found on the robot 2026-10-31 (it drove 50 in "blind").
+         */
+        public static final double PROGRESS_CHECK_S = 1.5;
+        public static final double MIN_PROGRESS_IN = 2.0;
+        /** Odometry Path Test: stop if the drive encoders and the Pinpoint disagree by more than this. */
+        public static final double TRACKING_MISMATCH_IN = 12.0;
     }
 }
