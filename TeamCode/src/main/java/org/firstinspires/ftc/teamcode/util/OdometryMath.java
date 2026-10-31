@@ -48,6 +48,37 @@ public final class OdometryMath {
         return maxExcursionIn / 2.0 * 25.4;
     }
 
+    /**
+     * Works out the pod offsets from a spin on the spot. While the robot turns left by theta
+     * (radians, from heading 0 at the zeroed start), offsets that are wrong by dA and dB make the
+     * Pinpoint report a position of
+     *   x = -dA sin(theta) + dB (cos(theta) - 1),   y = -dA (1 - cos(theta)) + dB sin(theta),
+     * because the X pod, dA to the left of the centre, rolls backwards as the robot turns left,
+     * and the Y pod, dB in front of it, rolls to the left. add() every loop; dA() and dB() are the
+     * least-squares fit, in the same units as x and y. New offset = current offset + the fit.
+     */
+    public static final class OffsetFit {
+        private double s11, s12, s22, r1, r2;
+        private int n;
+
+        public void add(double thetaRad, double x, double y) {
+            double s = Math.sin(thetaRad), c = Math.cos(thetaRad);
+            double a1x = -s, a1y = -(1 - c), a2x = c - 1, a2y = s;
+            s11 += a1x * a1x + a1y * a1y;
+            s12 += a1x * a2x + a1y * a2y;
+            s22 += a2x * a2x + a2y * a2y;
+            r1 += a1x * x + a1y * y;
+            r2 += a2x * x + a2y * y;
+            n++;
+        }
+
+        private double det() { return s11 * s22 - s12 * s12; }
+        /** Enough turning to tell dA and dB apart. */
+        public boolean ok() { return n > 10 && Math.abs(det()) > 1e-6; }
+        public double dA() { return ok() ? (r1 * s22 - r2 * s12) / det() : 0; }
+        public double dB() { return ok() ? (r2 * s11 - r1 * s12) / det() : 0; }
+    }
+
     public static boolean judgeSpin(double maxExcursionIn, double pinpointTurnDeg, double imuTurnDeg) {
         return maxExcursionIn <= Constants.Odometry.SPIN_MAX_EXCURSION_IN
                 && Math.abs(pinpointTurnDeg - imuTurnDeg) <= Constants.Odometry.SPIN_MAX_IMU_DIFF_DEG;

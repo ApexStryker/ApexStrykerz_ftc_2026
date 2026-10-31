@@ -166,6 +166,7 @@ public class OdometryCheck extends LinearOpMode {
         if (imu != null) imu.resetYaw();
         double target = 360 * Constants.Odometry.SPIN_TURNS;
         double lastP = headingDeg(), lastI = imuDeg(), turnP = 0, turnI = 0, maxExc = 0;
+        OdometryMath.OffsetFit fit = new OdometryMath.OffsetFit();
         boolean stoppedByButton = false;
         ElapsedTime t = new ElapsedTime();
         // A button still held from pressing CROSS would count as "stop": wait until all are released.
@@ -181,6 +182,8 @@ public class OdometryCheck extends LinearOpMode {
             turnI += OdometryMath.headingChange(lastI, i);
             lastP = p; lastI = i;
             maxExc = Math.max(maxExc, distanceFromZero());
+            Pose2D pose = pinpoint.getPose();
+            fit.add(Math.toRadians(turnP), pose.getX(DistanceUnit.MM), pose.getY(DistanceUnit.MM));
             if (anyButton(gamepad1) || anyButton(gamepad2)) { stoppedByButton = true; break; }
             // Stop on whichever heading reaches the target, so a reversed Pinpoint still stops.
             if (Math.abs(turnP) >= target || (imu != null && Math.abs(turnI) >= target)) break;
@@ -208,7 +211,12 @@ public class OdometryCheck extends LinearOpMode {
         StringBuilder msg = new StringBuilder(String.format("wandered %.2f in, Pinpoint %.1f°, IMU %s", maxExc, turnP,
                 imu == null ? "n/a" : String.format("%.1f°", turnI)));
         if (maxExc > Constants.Odometry.SPIN_MAX_EXCURSION_IN) {
-            msg.append(String.format(" -> A or B off by about %.0f mm: check their signs and measure again", OdometryMath.offsetErrorMm(maxExc)));
+            msg.append(String.format(" -> A or B off by about %.0f mm", OdometryMath.offsetErrorMm(maxExc)));
+        }
+        if (fit.ok()) {
+            msg.append(String.format(" -> measured from this spin: A = %.0f mm, B = %.0f mm (PINPOINT_X/Y_POD_OFFSET_MM)",
+                    Constants.Odometry.PINPOINT_X_POD_OFFSET_MM + fit.dA(),
+                    Constants.Odometry.PINPOINT_Y_POD_OFFSET_MM + fit.dB()));
         }
         if (imu != null && Math.abs(turnP - turnI) > Constants.Odometry.SPIN_MAX_IMU_DIFF_DEG) {
             msg.append(" -> Pinpoint and IMU disagree on the turn: Pinpoint flat and sticker up? Constants.Hub right?");
