@@ -67,11 +67,10 @@ public final class Constants {
     public static final class Hub {
         private Hub() {}
 
-        // TODO(Wed): set from the robot. Logo = the side with the REV logo; USB = the side the
-        // USB ports face. Check with Motor Direction Test: turning the robot left by hand must
-        // INCREASE the yaw reading.
+        // Set from the robot 2026-10-31: hub on its edge, logo to the right, USB ports to the front.
+        // Check with Motor Direction Test: turning the robot left by hand must INCREASE the yaw.
         public static final RevHubOrientationOnRobot.LogoFacingDirection LOGO =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT;
         public static final RevHubOrientationOnRobot.UsbFacingDirection USB =
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
     }
