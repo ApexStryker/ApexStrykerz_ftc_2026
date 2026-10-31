@@ -162,14 +162,14 @@ public final class Constants {
                 GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
         /**
          * "A": how far SIDEWAYS the X (forward-rolling) pod is from the robot's centre, mm.
-         * Left of centre +, right of centre -. TODO: measure once the pods are mounted.
+         * Left of centre +, right of centre -. Measured by the Odometry Check spin 2026-10-31.
          */
-        public static final double PINPOINT_X_POD_OFFSET_MM = 0.0;
+        public static final double PINPOINT_X_POD_OFFSET_MM = 300.0;
         /**
          * "B": how far FORWARD the Y (sideways-rolling) pod is from the robot's centre, mm.
-         * In front of centre +, behind -. TODO: measure once the pods are mounted.
+         * In front of centre +, behind -. Measured by the Odometry Check spin 2026-10-31.
          */
-        public static final double PINPOINT_Y_POD_OFFSET_MM = 0.0;
+        public static final double PINPOINT_Y_POD_OFFSET_MM = -152.0;
         /** Pushing the robot forward must make x go UP, pushing it left must make y go UP. TODO: check with Pinpoint Test. */
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_X_DIR =
                 GoBildaPinpointDriver.EncoderDirection.REVERSED;   // Odometry Check 2026-10-31: forward push read -10.5 in
