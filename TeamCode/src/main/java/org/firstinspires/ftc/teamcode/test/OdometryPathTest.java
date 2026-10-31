@@ -25,7 +25,8 @@ import java.util.List;
 
 /**
  * Odometry Path Test: the robot drives a path on its own with the Pinpoint, moving, strafing and
- * turning, and comes back to where it started. Run Odometry Check first.
+ * turning, and comes back to where it started. Run Odometry Check once after changing the pods
+ * or Constants.Odometry; after that this test can be run on its own.
  *
  * The robot always THINKS it got back to the start, because it steered there by the Pinpoint.
  * The real test is a ruler: mark the start with tape, and measure how far the robot ends up
@@ -127,7 +128,7 @@ public class OdometryPathTest extends LinearOpMode {
             while (opModeIsActive()) {
                 telemetry.addLine("NOT STARTED: the Pinpoint is not READY.");
                 telemetry.addData("Pinpoint", pinpoint.statusText());
-                telemetry.addLine("Run Odometry Check first.");
+                telemetry.addLine("Keep the robot still during INIT, or run Odometry Check test 1.");
                 telemetry.update();
                 idle();
             }
