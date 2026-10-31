@@ -357,14 +357,14 @@ public final class Constants {
         public static final double PATH_MAX_POWER = 0.5;
         /**
          * Near the target the robot stalls below this, so it never asks for less while moving.
-         * 0.08 stalled 2.5 in short on the robot (2026-10-31).
+         * 0.08 stalled 2.5 in short going forward, 0.2 stalled 3 in short strafing (2026-10-31).
          */
-        public static final double PATH_MIN_POWER = 0.2;
+        public static final double PATH_MIN_POWER = 0.28;
         /** Same for turning while following a path: below this the heading never gets corrected. */
-        public static final double PATH_MIN_TURN_POWER = 0.12;
+        public static final double PATH_MIN_TURN_POWER = 0.15;
         /** Each waypoint gets this long, plus PATH_TIMEOUT_PER_IN_S for every inch of distance. */
         public static final double WAYPOINT_TIMEOUT_S = 4.0;
-        public static final double PATH_TIMEOUT_PER_IN_S = 0.05;
+        public static final double PATH_TIMEOUT_PER_IN_S = 0.1;
         /** Stop if the distance to the target grows this far above its best: driving the wrong way. */
         public static final double RUNAWAY_IN = 6.0;
         /** Stop if the robot leaves the path's box by more than this. */
