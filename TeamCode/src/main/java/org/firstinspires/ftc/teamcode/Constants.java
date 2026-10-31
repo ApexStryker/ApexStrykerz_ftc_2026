@@ -23,7 +23,7 @@ public final class Constants {
      * mounted, its settings in Constants.Odometry are measured, and Pinpoint Test passes all
      * four checks. true also makes "Auto Pathed" appear on the Driver Station.
      */
-    public static final boolean USE_PINPOINT = false;
+    public static final boolean USE_PINPOINT = true;
 
     // =========================================================================================
     /**
@@ -350,6 +350,7 @@ public final class Constants {
         // ---- Path following (hardware/PathFollower: Auto Pathed, Odometry Path Test) ----
         /** Auto Pathed waypoints {x in, y in, heading deg}, field frame relative to the start pose. */
         public static final double[][] PATH = { { 24, 0, 0 }, { 24, 24, 0 } };
+        public static final double[][] APEXPATH = { { 85, 0, 90 }, { 24, 24, 0 } };
         /** Drive power per inch still to go. */
         public static final double POSITION_KP = 0.06;
         public static final double POSITION_TOLERANCE_IN = 1.0;

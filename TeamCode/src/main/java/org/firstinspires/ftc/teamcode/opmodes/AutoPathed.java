@@ -45,19 +45,19 @@ public class AutoPathed extends LinearOpMode {
         robot = new Robot(hardwareMap);
         follower = new PathFollower(robot.drive, robot.localizer);
         List<PathFollower.Waypoint> path = new ArrayList<>();
-        for (double[] wp : Constants.Auto.PATH) path.add(new PathFollower.Waypoint(wp[0], wp[1], wp[2]));
+        for (double[] wp : Constants.Auto.APEXPATH) path.add(new PathFollower.Waypoint(wp[0], wp[1], wp[2]));
         follower.setFenceAround(path);
         while (opModeInInit()) {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
-            telemetry.addData("Waypoints", Constants.Auto.PATH.length);
+            telemetry.addData("Waypoints", Constants.Auto.APEXPATH.length);
             robot.reportMissing(telemetry);
             telemetry.update();
         }
         if (!opModeIsActive()) return;
 
         robot.setPose(0, 0, 0);
-        for (double[] wp : Constants.Auto.PATH) {
+        for (double[] wp : Constants.Auto.APEXPATH) {
             if (!opModeIsActive() || !goTo(wp[0], wp[1], wp[2])) break;
         }
         robot.stop();
