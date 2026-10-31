@@ -195,8 +195,8 @@ public final class Constants {
         public static final double SPIN_MAX_IMU_DIFF_DEG = 2.0;
 
         // ---- Odometry Path Test ----
-        /** Side of the square and diamond paths. */
-        public static final double TEST_SQUARE_IN = 48.0;
+        /** Side of the square and diamond paths: 2 ft, so they fit beside the hive in the middle. */
+        public static final double TEST_SQUARE_IN = 24.0;
         /** Side of the field loop (fits the 12 ft field from a start near a corner). */
         public static final double TEST_FIELD_LOOP_IN = 96.0;
         /** Back at the start, the robot should be this close to the tape mark (goBILDA: about 1/2 in). */

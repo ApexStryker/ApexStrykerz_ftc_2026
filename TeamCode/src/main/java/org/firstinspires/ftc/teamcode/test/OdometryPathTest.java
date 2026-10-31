@@ -36,7 +36,7 @@ import java.util.List;
  * Running:           ANY button on either gamepad stops the robot at once.
  *
  * The paths go FORWARD and mostly to the LEFT of the start (the diamond also 2 ft to the right);
- * INIT shows exactly how much room each needs. Square paths need about 4 x 4 ft; the field loop
+ * INIT shows exactly how much room each needs. Square paths need about 2 x 2 ft plus the robot; the field loop
  * needs 8 x 8 ft: start about 2 ft from the back-right corner of the 12 ft field, facing forward.
  *
  * Also shown and logged: where the drive encoders and the Control Hub IMU think the robot is,
