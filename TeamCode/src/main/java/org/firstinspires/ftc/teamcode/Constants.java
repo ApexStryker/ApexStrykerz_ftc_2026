@@ -174,7 +174,7 @@ public final class Constants {
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_X_DIR =
                 GoBildaPinpointDriver.EncoderDirection.REVERSED;   // Odometry Check 2026-10-31: forward push read -10.5 in
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_Y_DIR =
-                GoBildaPinpointDriver.EncoderDirection.FORWARD;
+                GoBildaPinpointDriver.EncoderDirection.REVERSED;   // Odometry Check 2026-10-31: left push read -12.7 in
 
         // ---- Odometry Check (pass limits; goBILDA's guide gives the spin and return numbers) ----
         /** Stays-put test: how long to watch, and the most drift allowed. */
