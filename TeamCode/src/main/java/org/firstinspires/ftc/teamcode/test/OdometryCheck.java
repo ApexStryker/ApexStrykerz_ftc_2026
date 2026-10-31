@@ -159,7 +159,12 @@ public class OdometryCheck extends LinearOpMode {
         double lastP = headingDeg(), lastI = imuDeg(), turnP = 0, turnI = 0, maxExc = 0;
         boolean stoppedByButton = false;
         ElapsedTime t = new ElapsedTime();
-        sleep(300);   // let go of CROSS
+        // A button still held from pressing CROSS would count as "stop": wait until all are released.
+        while (opModeIsActive() && (anyButton(gamepad1) || anyButton(gamepad2))) {
+            telemetry.addLine("5. SPIN: let go of all gamepad buttons to start.");
+            telemetry.update();
+        }
+        t.reset();
         while (opModeIsActive() && t.seconds() < Constants.Odometry.SPIN_TIMEOUT_S) {
             pinpoint.update();
             double p = headingDeg(), i = imuDeg();
