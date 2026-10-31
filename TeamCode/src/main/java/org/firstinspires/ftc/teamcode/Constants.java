@@ -355,8 +355,13 @@ public final class Constants {
         public static final double POSITION_TOLERANCE_IN = 1.0;
         public static final double HEADING_TOLERANCE_DEG = 2.0;
         public static final double PATH_MAX_POWER = 0.5;
-        /** Near the target the robot stalls below this, so it never asks for less while moving. */
-        public static final double PATH_MIN_POWER = 0.08;
+        /**
+         * Near the target the robot stalls below this, so it never asks for less while moving.
+         * 0.08 stalled 2.5 in short on the robot (2026-10-31).
+         */
+        public static final double PATH_MIN_POWER = 0.2;
+        /** Same for turning while following a path: below this the heading never gets corrected. */
+        public static final double PATH_MIN_TURN_POWER = 0.12;
         /** Each waypoint gets this long, plus PATH_TIMEOUT_PER_IN_S for every inch of distance. */
         public static final double WAYPOINT_TIMEOUT_S = 4.0;
         public static final double PATH_TIMEOUT_PER_IN_S = 0.05;

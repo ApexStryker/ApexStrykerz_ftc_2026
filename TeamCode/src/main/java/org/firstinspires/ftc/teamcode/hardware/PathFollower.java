@@ -56,7 +56,7 @@ public class PathFollower {
      * The control law, with no hardware so it can be tested on a laptop. Speed grows with the
      * distance (POSITION_KP), capped at PATH_MAX_POWER and never below PATH_MIN_POWER while still
      * away from the target; the direction is straight at the target. Turning is proportional to
-     * the heading error (HEADING_KP).
+     * the heading error (HEADING_KP), never below PATH_MIN_TURN_POWER while still off.
      */
     public static Command compute(double x, double y, double headingDeg, Waypoint target) {
         double ex = target.x - x, ey = target.y - y;
@@ -70,8 +70,12 @@ public class PathFollower {
             right = -ey / dist * speed;          // field y is LEFT
         }
         // Heading error positive = still to turn left (counter-clockwise) = negative yaw.
-        double yaw = Range.clip(-headingErr * Constants.Auto.HEADING_KP,
-                -Constants.Auto.PATH_MAX_POWER, Constants.Auto.PATH_MAX_POWER);
+        double yaw = 0;
+        if (Math.abs(headingErr) >= Constants.Auto.HEADING_TOLERANCE_DEG) {
+            double turn = Range.clip(Math.abs(headingErr) * Constants.Auto.HEADING_KP,
+                    Constants.Auto.PATH_MIN_TURN_POWER, Constants.Auto.PATH_MAX_POWER);
+            yaw = -Math.signum(headingErr) * turn;
+        }
         return new Command(forward, right, yaw, dist, headingErr);
     }
 
