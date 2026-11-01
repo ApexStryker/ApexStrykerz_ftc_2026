@@ -16,9 +16,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Point-to-point autonomous on the Localizer: drives through Constants.Auto.PATH with the shared
- * PathFollower (moves and turns at once, with timeout, runaway and fence stops). No path library
- * yet, on purpose.
+ * Point-to-point autonomous on the Localizer: drives through Constants.Auto.APEXPATH with the
+ * shared PathFollower (moves and turns at once, with timeout, runaway and fence stops). No path
+ * library yet, on purpose.
+ *
+ * Everything is in ARENA coordinates (see Constants.Auto): at START the robot is told it stands
+ * at Constants.Auto.START_POSE, and every waypoint is a spot on the field, not a distance from
+ * the start. Put the robot exactly on the taped start spot.
  *
  * Only appears on the Driver Station when Constants.USE_PINPOINT is true (see register() below):
  * drive-encoder position slips too much to steer by.
@@ -46,17 +50,21 @@ public class AutoPathed extends LinearOpMode {
         follower = new PathFollower(robot.drive, robot.localizer);
         List<PathFollower.Waypoint> path = new ArrayList<>();
         for (double[] wp : Constants.Auto.APEXPATH) path.add(new PathFollower.Waypoint(wp[0], wp[1], wp[2]));
-        follower.setFenceAround(path);
+        double[] start = Constants.Auto.START_POSE;
+        follower.setFenceAround(path, start[0], start[1]);
+        String nearWall = PathFollower.checkInArena(path);
         while (opModeInInit()) {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
+            telemetry.addData("Start", "%.0f, %.0f, %.0f°  (arena; put the robot on the tape)", start[0], start[1], start[2]);
             telemetry.addData("Waypoints", Constants.Auto.APEXPATH.length);
+            if (!nearWall.isEmpty()) telemetry.addLine("WARNING: too close to a wall: " + nearWall);
             robot.reportMissing(telemetry);
             telemetry.update();
         }
         if (!opModeIsActive()) return;
 
-        robot.setPose(0, 0, 0);
+        robot.setPose(start[0], start[1], start[2]);
         for (double[] wp : Constants.Auto.APEXPATH) {
             if (!opModeIsActive() || !goTo(wp[0], wp[1], wp[2])) break;
         }

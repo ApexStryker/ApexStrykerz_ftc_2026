@@ -348,9 +348,27 @@ public final class Constants {
         public static final double TURN_TIMEOUT_S = 3.0;
 
         // ---- Path following (hardware/PathFollower: Auto Pathed, Odometry Path Test) ----
-        /** Auto Pathed waypoints {x in, y in, heading deg}, field frame relative to the start pose. */
-        public static final double[][] PATH = { { 24, 0, 0 }, { 24, 24, 0 } };
-        public static final double[][] APEXPATH = { { 85, 0, 90 }, { 24, 24, 0 } };
+        /**
+         * ARENA COORDINATES for Auto Pathed, in inches and degrees. Stand behind OUR wall
+         * (the Driver Station side) looking at the field:
+         *   (0, 0)  = the field corner on your RIGHT, where our wall meets the right-hand wall
+         *   x       = inches AWAY from our wall (0 to 144)
+         *   y       = inches to the LEFT from the right-hand wall (0 to 144)
+         *   heading = 0° faces away from our wall, 90° faces left, -90° faces right
+         * Positions are the CENTRE of the robot, so nothing closer than ARENA_WALL_GAP_IN to a wall.
+         */
+        public static final double ARENA_SIZE_IN = 144.0;
+        public static final double ARENA_WALL_GAP_IN = 9.0;
+        /**
+         * Where the robot stands at START {x, y, heading}, in arena coordinates. Mark it with tape.
+         * TODO: measure the team's real start spot (robot centre) and put it here.
+         */
+        public static final double[] START_POSE = { 9, 24, 0 };
+        /**
+         * Auto Pathed waypoints {x, y, heading}, in ARENA coordinates (not from the start).
+         * The team's loop (2026-10-31): 85 in ahead, 100 in left, back, and home to START_POSE.
+         */
+        public static final double[][] APEXPATH = { { 94, 24, 0 }, { 94, 124, 90 }, { 9, 124, 90 }, { 9, 24, 0 } };
         /** Drive power per inch still to go. */
         public static final double POSITION_KP = 0.06;
         public static final double POSITION_TOLERANCE_IN = 1.0;

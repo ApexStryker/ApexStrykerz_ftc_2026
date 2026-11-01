@@ -93,10 +93,25 @@ public class PathFollower {
         this.localizer = localizer;
     }
 
-    /** Stop if the robot leaves the box around these waypoints by more than FENCE_MARGIN_IN. */
+    /**
+     * Stop if the robot leaves the box around these waypoints by more than FENCE_MARGIN_IN.
+     * The box also holds the start, (0, 0) here: for paths measured from where the robot starts.
+     */
     public void setFenceAround(List<Waypoint> path) {
-        fenceMinX = fenceMaxX = 0;
-        fenceMinY = fenceMaxY = 0;
+        fenceAround(path, 0, 0);
+    }
+
+    /** The same in ARENA coordinates: the start is (startX, startY), and the box stops at the walls. */
+    public void setFenceAround(List<Waypoint> path, double startX, double startY) {
+        fenceAround(path, startX, startY);
+        double a = Constants.Auto.ARENA_SIZE_IN;
+        fenceMinX = Math.max(fenceMinX, 0); fenceMaxX = Math.min(fenceMaxX, a);
+        fenceMinY = Math.max(fenceMinY, 0); fenceMaxY = Math.min(fenceMaxY, a);
+    }
+
+    private void fenceAround(List<Waypoint> path, double startX, double startY) {
+        fenceMinX = fenceMaxX = startX;
+        fenceMinY = fenceMaxY = startY;
         for (Waypoint w : path) {
             fenceMinX = Math.min(fenceMinX, w.x); fenceMaxX = Math.max(fenceMaxX, w.x);
             fenceMinY = Math.min(fenceMinY, w.y); fenceMaxY = Math.max(fenceMaxY, w.y);
@@ -104,6 +119,17 @@ public class PathFollower {
         double m = Constants.Auto.FENCE_MARGIN_IN;
         fenceMinX -= m; fenceMaxX += m; fenceMinY -= m; fenceMaxY += m;
         fenced = true;
+    }
+
+    /** Waypoints closer to a wall than ARENA_WALL_GAP_IN (or outside the arena), as text; empty if none. */
+    public static String checkInArena(List<Waypoint> path) {
+        double g = Constants.Auto.ARENA_WALL_GAP_IN, a = Constants.Auto.ARENA_SIZE_IN;
+        StringBuilder bad = new StringBuilder();
+        for (int i = 0; i < path.size(); i++) {
+            Waypoint w = path.get(i);
+            if (w.x < g || w.x > a - g || w.y < g || w.y > a - g) bad.append(" ").append(i + 1).append(" ").append(w);
+        }
+        return bad.toString().trim();
     }
 
     public void start(Waypoint w) {
