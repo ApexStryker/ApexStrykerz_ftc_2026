@@ -25,7 +25,8 @@ import java.util.List;
 
 /**
  * Odometry Path Test: the robot drives a path on its own with the Pinpoint, moving, strafing and
- * turning, and comes back to where it started. Run Odometry Check first.
+ * turning, and comes back to where it started. Run Odometry Check once after changing the pods
+ * or Constants.Odometry; after that this test can be run on its own.
  *
  * The robot always THINKS it got back to the start, because it steered there by the Pinpoint.
  * The real test is a ruler: mark the start with tape, and measure how far the robot ends up
@@ -35,7 +36,7 @@ import java.util.List;
  * Running:           ANY button on either gamepad stops the robot at once.
  *
  * The paths go FORWARD and mostly to the LEFT of the start (the diamond also 2 ft to the right);
- * INIT shows exactly how much room each needs. Square paths need about 4 x 4 ft; the field loop
+ * INIT shows exactly how much room each needs. Square paths need about 2 x 2 ft plus the robot; the field loop
  * needs 8 x 8 ft: start about 2 ft from the back-right corner of the 12 ft field, facing forward.
  *
  * Also shown and logged: where the drive encoders and the Control Hub IMU think the robot is,
@@ -127,7 +128,7 @@ public class OdometryPathTest extends LinearOpMode {
             while (opModeIsActive()) {
                 telemetry.addLine("NOT STARTED: the Pinpoint is not READY.");
                 telemetry.addData("Pinpoint", pinpoint.statusText());
-                telemetry.addLine("Run Odometry Check first.");
+                telemetry.addLine("Keep the robot still during INIT, or run Odometry Check test 1.");
                 telemetry.update();
                 idle();
             }
@@ -154,10 +155,20 @@ public class OdometryPathTest extends LinearOpMode {
         for (int i = 0; i < route.size() && opModeIsActive(); i++) {
             Waypoint w = route.get(i);
             follower.start(w);
+            Pose2D pinStart = pinpoint.getPose(), encStart = encoders.getPose();
             PathFollower.Result r = PathFollower.Result.RUNNING;
             while (opModeIsActive() && r == PathFollower.Result.RUNNING) {
                 pinpoint.update();
                 encoders.update();
+                // Second opinion: if the wheels say the robot moved much further than the Pinpoint
+                // does, a pod is not tracking (not touching the floor, unplugged): stop.
+                double mismatch = moved(encoders.getPose(), encStart) - moved(pinpoint.getPose(), pinStart);
+                if (mismatch > Constants.Auto.TRACKING_MISMATCH_IN) {
+                    follower.abort();
+                    outcome = String.format("STOPPED at waypoint %d: the wheels moved %.0f in more than the Pinpoint saw "
+                            + "(a pod not touching the floor, or a cable out of the X/Y port?)", i + 1, mismatch);
+                    break;
+                }
                 double p = Math.toDegrees(pinpoint.getHeading()), im = imuDeg(imu);
                 turnP += OdometryMath.headingChange(lastP, p); lastP = p;
                 turnI += OdometryMath.headingChange(lastI, im); lastI = im;
@@ -226,9 +237,16 @@ public class OdometryPathTest extends LinearOpMode {
             case RUNAWAY: return " (driving away from the target: run Odometry Check, a direction may be flipped)";
             case OUT_OF_BOUNDS: return " (left the path's box)";
             case TIMED_OUT: return " (too slow: blocked, or power too low)";
+            case NO_PROGRESS: return " (not getting closer: is a pod touching the floor and plugged into its port?)";
             case LOST: return " (Pinpoint stopped being READY)";
             default: return "";
         }
+    }
+
+    /** Straight-line distance between two poses, inches. */
+    private static double moved(Pose2D now, Pose2D start) {
+        return Math.hypot(now.getX(DistanceUnit.INCH) - start.getX(DistanceUnit.INCH),
+                now.getY(DistanceUnit.INCH) - start.getY(DistanceUnit.INCH));
     }
 
     private static double imuDeg(IMU imu) { return imu == null ? 0 : imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES); }

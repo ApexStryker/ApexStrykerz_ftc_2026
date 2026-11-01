@@ -25,6 +25,7 @@ import java.util.List;
  * Works while Constants.USE_PINPOINT is still false. Run it before Odometry Path Test.
  *
  * KEEP THE ROBOT STILL while pressing INIT: the Pinpoint calibrates its IMU then.
+ * INIT, gamepad 1: D-pad UP / DOWN = run all tests, or just one of them.
  * Gamepad 1: CROSS = start the next test, CIRCLE = skip it. During the spin, ANY button stops.
  *
  *   1. Connected   status READY
@@ -45,6 +46,9 @@ public class OdometryCheck extends LinearOpMode {
     private final Gamepad prev = new Gamepad();
     private final List<String> results = new ArrayList<>();
 
+    private static final String[] MENU = { "All tests, 1 to 5", "1 Connected only", "2 Stays put only",
+            "3 Push forward only", "4 Push left only", "5 Spin only" };
+
     @Override
     public void runOpMode() {
         for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
@@ -52,28 +56,33 @@ public class OdometryCheck extends LinearOpMode {
         drive = new Drivetrain(hardwareMap);
         imu = Robot.initImu(hardwareMap);
 
+        int choice = 0;   // 0 = all, 1..5 = that test only
         while (opModeInInit()) {
             pinpoint.update();
+            if (pressed(gamepad1.dpad_up, prev.dpad_up)) choice = (choice + MENU.length - 1) % MENU.length;
+            if (pressed(gamepad1.dpad_down, prev.dpad_down)) choice = (choice + 1) % MENU.length;
+            prev.copy(gamepad1);
             telemetry.addLine("Odometry Check. KEEP THE ROBOT STILL until the status is READY.");
             telemetry.addData("Pinpoint", pinpoint.statusText());
             if (!pinpoint.present) telemetry.addLine("Add it on the Driver Hub: I2C bus 1, 'goBILDA Pinpoint Odometry Computer', name 'pinpoint'.");
-            telemetry.addLine("Gamepad 1: CROSS = next test, CIRCLE = skip.");
+            for (int i = 0; i < MENU.length; i++) telemetry.addLine((i == choice ? ">> " : "    ") + MENU[i]);
+            telemetry.addLine("D-pad UP / DOWN = choose. Then CROSS = next test, CIRCLE = skip.");
             telemetry.update();
         }
         if (!opModeIsActive()) return;
-        Debug.log("Odometry Check: start, %s", pinpoint.statusText());
+        Debug.log("Odometry Check: start, %s, %s", MENU[choice], pinpoint.statusText());
 
-        testConnected();
-        if (opModeIsActive()) testStill();
-        if (opModeIsActive()) testPush(true);
-        if (opModeIsActive()) testPush(false);
-        if (opModeIsActive()) testSpin();
+        if (choice == 0 || choice == 1) testConnected();
+        if (opModeIsActive() && (choice == 0 || choice == 2)) testStill();
+        if (opModeIsActive() && (choice == 0 || choice == 3)) testPush(true);
+        if (opModeIsActive() && (choice == 0 || choice == 4)) testPush(false);
+        if (opModeIsActive() && (choice == 0 || choice == 5)) testSpin();
 
         drive.stop();
         while (opModeIsActive()) {
             telemetry.addLine("ODOMETRY CHECK RESULTS");
             for (String r : results) telemetry.addLine(r);
-            telemetry.addLine("All PASS? Next: Odometry Path Test (Autonomous list).");
+            telemetry.addLine("Next: Odometry Path Test (Autonomous list). It does not need this check first.");
             telemetry.update();
             idle();
         }
@@ -157,9 +166,15 @@ public class OdometryCheck extends LinearOpMode {
         if (imu != null) imu.resetYaw();
         double target = 360 * Constants.Odometry.SPIN_TURNS;
         double lastP = headingDeg(), lastI = imuDeg(), turnP = 0, turnI = 0, maxExc = 0;
+        OdometryMath.OffsetFit fit = new OdometryMath.OffsetFit();
         boolean stoppedByButton = false;
         ElapsedTime t = new ElapsedTime();
-        sleep(300);   // let go of CROSS
+        // A button still held from pressing CROSS would count as "stop": wait until all are released.
+        while (opModeIsActive() && (anyButton(gamepad1) || anyButton(gamepad2))) {
+            telemetry.addLine("5. SPIN: let go of all gamepad buttons to start.");
+            telemetry.update();
+        }
+        t.reset();
         while (opModeIsActive() && t.seconds() < Constants.Odometry.SPIN_TIMEOUT_S) {
             pinpoint.update();
             double p = headingDeg(), i = imuDeg();
@@ -167,6 +182,8 @@ public class OdometryCheck extends LinearOpMode {
             turnI += OdometryMath.headingChange(lastI, i);
             lastP = p; lastI = i;
             maxExc = Math.max(maxExc, distanceFromZero());
+            Pose2D pose = pinpoint.getPose();
+            fit.add(Math.toRadians(turnP), pose.getX(DistanceUnit.MM), pose.getY(DistanceUnit.MM));
             if (anyButton(gamepad1) || anyButton(gamepad2)) { stoppedByButton = true; break; }
             // Stop on whichever heading reaches the target, so a reversed Pinpoint still stops.
             if (Math.abs(turnP) >= target || (imu != null && Math.abs(turnI) >= target)) break;
@@ -194,7 +211,12 @@ public class OdometryCheck extends LinearOpMode {
         StringBuilder msg = new StringBuilder(String.format("wandered %.2f in, Pinpoint %.1f°, IMU %s", maxExc, turnP,
                 imu == null ? "n/a" : String.format("%.1f°", turnI)));
         if (maxExc > Constants.Odometry.SPIN_MAX_EXCURSION_IN) {
-            msg.append(String.format(" -> A or B off by about %.0f mm: check their signs and measure again", OdometryMath.offsetErrorMm(maxExc)));
+            msg.append(String.format(" -> A or B off by about %.0f mm", OdometryMath.offsetErrorMm(maxExc)));
+        }
+        if (fit.ok()) {
+            msg.append(String.format(" -> measured from this spin: A = %.0f mm, B = %.0f mm (PINPOINT_X/Y_POD_OFFSET_MM)",
+                    Constants.Odometry.PINPOINT_X_POD_OFFSET_MM + fit.dA(),
+                    Constants.Odometry.PINPOINT_Y_POD_OFFSET_MM + fit.dB()));
         }
         if (imu != null && Math.abs(turnP - turnI) > Constants.Odometry.SPIN_MAX_IMU_DIFF_DEG) {
             msg.append(" -> Pinpoint and IMU disagree on the turn: Pinpoint flat and sticker up? Constants.Hub right?");

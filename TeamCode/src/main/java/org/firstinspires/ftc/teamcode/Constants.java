@@ -23,7 +23,7 @@ public final class Constants {
      * mounted, its settings in Constants.Odometry are measured, and Pinpoint Test passes all
      * four checks. true also makes "Auto Pathed" appear on the Driver Station.
      */
-    public static final boolean USE_PINPOINT = false;
+    public static final boolean USE_PINPOINT = true;
 
     // =========================================================================================
     /**
@@ -67,11 +67,10 @@ public final class Constants {
     public static final class Hub {
         private Hub() {}
 
-        // TODO(Wed): set from the robot. Logo = the side with the REV logo; USB = the side the
-        // USB ports face. Check with Motor Direction Test: turning the robot left by hand must
-        // INCREASE the yaw reading.
+        // Set from the robot 2026-10-31: hub on its edge, logo to the right, USB ports to the front.
+        // Check with Motor Direction Test: turning the robot left by hand must INCREASE the yaw.
         public static final RevHubOrientationOnRobot.LogoFacingDirection LOGO =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT;
         public static final RevHubOrientationOnRobot.UsbFacingDirection USB =
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
     }
@@ -163,19 +162,19 @@ public final class Constants {
                 GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD;
         /**
          * "A": how far SIDEWAYS the X (forward-rolling) pod is from the robot's centre, mm.
-         * Left of centre +, right of centre -. TODO: measure once the pods are mounted.
+         * Left of centre +, right of centre -. Measured by the Odometry Check spin 2026-10-31.
          */
-        public static final double PINPOINT_X_POD_OFFSET_MM = 0.0;
+        public static final double PINPOINT_X_POD_OFFSET_MM = 300.0;
         /**
          * "B": how far FORWARD the Y (sideways-rolling) pod is from the robot's centre, mm.
-         * In front of centre +, behind -. TODO: measure once the pods are mounted.
+         * In front of centre +, behind -. Measured by the Odometry Check spin 2026-10-31.
          */
-        public static final double PINPOINT_Y_POD_OFFSET_MM = 0.0;
+        public static final double PINPOINT_Y_POD_OFFSET_MM = -152.0;
         /** Pushing the robot forward must make x go UP, pushing it left must make y go UP. TODO: check with Pinpoint Test. */
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_X_DIR =
-                GoBildaPinpointDriver.EncoderDirection.FORWARD;
+                GoBildaPinpointDriver.EncoderDirection.REVERSED;   // Odometry Check 2026-10-31: forward push read -10.5 in
         public static final GoBildaPinpointDriver.EncoderDirection PINPOINT_Y_DIR =
-                GoBildaPinpointDriver.EncoderDirection.FORWARD;
+                GoBildaPinpointDriver.EncoderDirection.REVERSED;   // Odometry Check 2026-10-31: left push read -12.7 in
 
         // ---- Odometry Check (pass limits; goBILDA's guide gives the spin and return numbers) ----
         /** Stays-put test: how long to watch, and the most drift allowed. */
@@ -196,8 +195,8 @@ public final class Constants {
         public static final double SPIN_MAX_IMU_DIFF_DEG = 2.0;
 
         // ---- Odometry Path Test ----
-        /** Side of the square and diamond paths. */
-        public static final double TEST_SQUARE_IN = 48.0;
+        /** Side of the square and diamond paths: 2 ft, so they fit beside the hive in the middle. */
+        public static final double TEST_SQUARE_IN = 24.0;
         /** Side of the field loop (fits the 12 ft field from a start near a corner). */
         public static final double TEST_FIELD_LOOP_IN = 96.0;
         /** Back at the start, the robot should be this close to the tape mark (goBILDA: about 1/2 in). */
@@ -349,23 +348,56 @@ public final class Constants {
         public static final double TURN_TIMEOUT_S = 3.0;
 
         // ---- Path following (hardware/PathFollower: Auto Pathed, Odometry Path Test) ----
-        /** Auto Pathed waypoints {x in, y in, heading deg}, field frame relative to the start pose. */
-        public static final double[][] PATH = { { 24, 0, 0 }, { 24, 24, 0 } };
+        /**
+         * ARENA COORDINATES for Auto Pathed, in inches and degrees. Stand behind OUR wall
+         * (the Driver Station side) looking at the field:
+         *   (0, 0)  = the field corner on your RIGHT, where our wall meets the right-hand wall
+         *   x       = inches AWAY from our wall (0 to 144)
+         *   y       = inches to the LEFT from the right-hand wall (0 to 144)
+         *   heading = 0° faces away from our wall, 90° faces left, -90° faces right
+         * Positions are the CENTRE of the robot, so nothing closer than ARENA_WALL_GAP_IN to a wall.
+         */
+        public static final double ARENA_SIZE_IN = 144.0;
+        public static final double ARENA_WALL_GAP_IN = 9.0;
+        /**
+         * Where the robot stands at START {x, y, heading}, in arena coordinates. Mark it with tape.
+         * TODO: measure the team's real start spot (robot centre) and put it here.
+         */
+        public static final double[] START_POSE = { 9, 24, 0 };
+        /**
+         * Auto Pathed waypoints {x, y, heading}, in ARENA coordinates (not from the start).
+         * The team's loop (2026-10-31): 85 in ahead, 100 in left, back, and home to START_POSE.
+         */
+        public static final double[][] APEXPATH = { { 94, 24, 0 }, { 94, 124, 90 }, { 9, 124, 90 }, { 9, 24, 0 } };
         /** Drive power per inch still to go. */
         public static final double POSITION_KP = 0.06;
         public static final double POSITION_TOLERANCE_IN = 1.0;
         public static final double HEADING_TOLERANCE_DEG = 2.0;
         public static final double PATH_MAX_POWER = 0.5;
-        /** Near the target the robot stalls below this, so it never asks for less while moving. */
-        public static final double PATH_MIN_POWER = 0.08;
+        /**
+         * Near the target the robot stalls below this, so it never asks for less while moving.
+         * 0.08 stalled 2.5 in short going forward, 0.2 stalled 3 in short strafing (2026-10-31).
+         */
+        public static final double PATH_MIN_POWER = 0.28;
+        /** Same for turning while following a path: below this the heading never gets corrected. */
+        public static final double PATH_MIN_TURN_POWER = 0.15;
         /** Each waypoint gets this long, plus PATH_TIMEOUT_PER_IN_S for every inch of distance. */
         public static final double WAYPOINT_TIMEOUT_S = 4.0;
-        public static final double PATH_TIMEOUT_PER_IN_S = 0.05;
+        public static final double PATH_TIMEOUT_PER_IN_S = 0.1;
         /** Stop if the distance to the target grows this far above its best: driving the wrong way. */
         public static final double RUNAWAY_IN = 6.0;
         /** Stop if the robot leaves the path's box by more than this. */
         public static final double FENCE_MARGIN_IN = 12.0;
         /** Settle at each waypoint before measuring and moving on. */
         public static final double WAYPOINT_SETTLE_S = 0.3;
+        /**
+         * Stop if, after PROGRESS_CHECK_S of driving, the robot is not at least MIN_PROGRESS_IN
+         * closer to the target: e.g. a pod that does not touch the floor, so the robot never
+         * seems to move. Found on the robot 2026-10-31 (it drove 50 in "blind").
+         */
+        public static final double PROGRESS_CHECK_S = 1.5;
+        public static final double MIN_PROGRESS_IN = 2.0;
+        /** Odometry Path Test: stop if the drive encoders and the Pinpoint disagree by more than this. */
+        public static final double TRACKING_MISMATCH_IN = 12.0;
     }
 }

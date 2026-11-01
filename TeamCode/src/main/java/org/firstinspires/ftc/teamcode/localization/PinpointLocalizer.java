@@ -66,7 +66,10 @@ public class PinpointLocalizer implements Localizer {
 
     @Override
     public void setPose(Pose2D pose) {
-        if (present) pinpoint.setPosition(pose);
+        if (present) {
+            pinpoint.setPosition(pose);
+            pinpoint.update();   // otherwise getPose() returns the old position until the next update
+        }
     }
 
     @Override

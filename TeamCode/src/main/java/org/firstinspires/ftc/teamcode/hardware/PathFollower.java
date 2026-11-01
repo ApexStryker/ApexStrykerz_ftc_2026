@@ -20,7 +20,8 @@ import java.util.List;
  *   while (opModeIsActive() && follower.update() == Result.RUNNING) { ... }
  *
  * Safety: it stops by itself and reports why when the target is reached (ARRIVED), time runs
- * out (TIMED_OUT), the robot gets FURTHER from the target than it has been (RUNAWAY, e.g. a pod
+ * out (TIMED_OUT), it is not getting closer after a moment of driving (NO_PROGRESS, e.g. a pod
+ * not touching the floor), it gets FURTHER from the target than it has been (RUNAWAY, e.g. a pod
  * direction flipped), it leaves the fence box (OUT_OF_BOUNDS), or the localizer stops being
  * trustworthy (LOST). Numbers live in Constants.Auto.
  *
@@ -29,7 +30,7 @@ import java.util.List;
  */
 public class PathFollower {
 
-    public enum Result { RUNNING, ARRIVED, TIMED_OUT, RUNAWAY, OUT_OF_BOUNDS, LOST }
+    public enum Result { RUNNING, ARRIVED, TIMED_OUT, NO_PROGRESS, RUNAWAY, OUT_OF_BOUNDS, LOST }
 
     /** A target: x and y in inches, heading in degrees. */
     public static final class Waypoint {
@@ -55,7 +56,7 @@ public class PathFollower {
      * The control law, with no hardware so it can be tested on a laptop. Speed grows with the
      * distance (POSITION_KP), capped at PATH_MAX_POWER and never below PATH_MIN_POWER while still
      * away from the target; the direction is straight at the target. Turning is proportional to
-     * the heading error (HEADING_KP).
+     * the heading error (HEADING_KP), never below PATH_MIN_TURN_POWER while still off.
      */
     public static Command compute(double x, double y, double headingDeg, Waypoint target) {
         double ex = target.x - x, ey = target.y - y;
@@ -69,8 +70,12 @@ public class PathFollower {
             right = -ey / dist * speed;          // field y is LEFT
         }
         // Heading error positive = still to turn left (counter-clockwise) = negative yaw.
-        double yaw = Range.clip(-headingErr * Constants.Auto.HEADING_KP,
-                -Constants.Auto.PATH_MAX_POWER, Constants.Auto.PATH_MAX_POWER);
+        double yaw = 0;
+        if (Math.abs(headingErr) >= Constants.Auto.HEADING_TOLERANCE_DEG) {
+            double turn = Range.clip(Math.abs(headingErr) * Constants.Auto.HEADING_KP,
+                    Constants.Auto.PATH_MIN_TURN_POWER, Constants.Auto.PATH_MAX_POWER);
+            yaw = -Math.signum(headingErr) * turn;
+        }
         return new Command(forward, right, yaw, dist, headingErr);
     }
 
@@ -78,7 +83,7 @@ public class PathFollower {
     private final Localizer localizer;
     private final ElapsedTime timer = new ElapsedTime();
     private Waypoint target;
-    private double timeoutS, bestDist;
+    private double timeoutS, bestDist, startDist;
     private boolean fenced;
     private double fenceMinX, fenceMaxX, fenceMinY, fenceMaxY;
     private Command last;
@@ -88,10 +93,25 @@ public class PathFollower {
         this.localizer = localizer;
     }
 
-    /** Stop if the robot leaves the box around these waypoints by more than FENCE_MARGIN_IN. */
+    /**
+     * Stop if the robot leaves the box around these waypoints by more than FENCE_MARGIN_IN.
+     * The box also holds the start, (0, 0) here: for paths measured from where the robot starts.
+     */
     public void setFenceAround(List<Waypoint> path) {
-        fenceMinX = fenceMaxX = 0;
-        fenceMinY = fenceMaxY = 0;
+        fenceAround(path, 0, 0);
+    }
+
+    /** The same in ARENA coordinates: the start is (startX, startY), and the box stops at the walls. */
+    public void setFenceAround(List<Waypoint> path, double startX, double startY) {
+        fenceAround(path, startX, startY);
+        double a = Constants.Auto.ARENA_SIZE_IN;
+        fenceMinX = Math.max(fenceMinX, 0); fenceMaxX = Math.min(fenceMaxX, a);
+        fenceMinY = Math.max(fenceMinY, 0); fenceMaxY = Math.min(fenceMaxY, a);
+    }
+
+    private void fenceAround(List<Waypoint> path, double startX, double startY) {
+        fenceMinX = fenceMaxX = startX;
+        fenceMinY = fenceMaxY = startY;
         for (Waypoint w : path) {
             fenceMinX = Math.min(fenceMinX, w.x); fenceMaxX = Math.max(fenceMaxX, w.x);
             fenceMinY = Math.min(fenceMinY, w.y); fenceMaxY = Math.max(fenceMaxY, w.y);
@@ -101,10 +121,22 @@ public class PathFollower {
         fenced = true;
     }
 
+    /** Waypoints closer to a wall than ARENA_WALL_GAP_IN (or outside the arena), as text; empty if none. */
+    public static String checkInArena(List<Waypoint> path) {
+        double g = Constants.Auto.ARENA_WALL_GAP_IN, a = Constants.Auto.ARENA_SIZE_IN;
+        StringBuilder bad = new StringBuilder();
+        for (int i = 0; i < path.size(); i++) {
+            Waypoint w = path.get(i);
+            if (w.x < g || w.x > a - g || w.y < g || w.y > a - g) bad.append(" ").append(i + 1).append(" ").append(w);
+        }
+        return bad.toString().trim();
+    }
+
     public void start(Waypoint w) {
         target = w;
         Pose2D p = localizer.getPose();
         bestDist = Math.hypot(w.x - p.getX(DistanceUnit.INCH), w.y - p.getY(DistanceUnit.INCH));
+        startDist = bestDist;
         timeoutS = Constants.Auto.WAYPOINT_TIMEOUT_S + bestDist * Constants.Auto.PATH_TIMEOUT_PER_IN_S;
         timer.reset();
         Debug.log("path: heading for %s, %.1f in away", w, bestDist);
@@ -122,6 +154,10 @@ public class PathFollower {
         if (timer.seconds() > timeoutS) return finish(Result.TIMED_OUT);
         bestDist = Math.min(bestDist, last.distanceIn);
         if (last.distanceIn > bestDist + Constants.Auto.RUNAWAY_IN) return finish(Result.RUNAWAY);
+        // Driving but not getting closer: the localizer is not seeing the robot move.
+        if (timer.seconds() > Constants.Auto.PROGRESS_CHECK_S
+                && startDist > Constants.Auto.MIN_PROGRESS_IN + Constants.Auto.POSITION_TOLERANCE_IN
+                && startDist - bestDist < Constants.Auto.MIN_PROGRESS_IN) return finish(Result.NO_PROGRESS);
         if (fenced && (x < fenceMinX || x > fenceMaxX || y < fenceMinY || y > fenceMaxY)) return finish(Result.OUT_OF_BOUNDS);
 
         drive.driveFieldCentric(last.forward, last.right, last.yaw, localizer.getHeading(), 1.0);
