@@ -32,7 +32,8 @@ import org.firstinspires.ftc.teamcode.hardware.Robot;
  *   Hold RIGHT TRIGGER    shoot: launcher spins up, then the windmill turns once it is at speed
  *   LEFT TRIGGER          launcher on / off
  *   LEFT BUMPER           windmill on / off
- *   D-pad UP / DOWN       launcher speed +100 / -100 tps
+ *   D-pad UP / DOWN       launcher speed +80 / -80 tps
+ *   D-pad RIGHT / LEFT    windmill speed +0.05 / -0.05
  *   CIRCLE (B)            jump to the other speed preset (near / far)
  *
  * Rumble: short = launcher at speed. Hub LEDs: green = ready, yellow = spinning up, blue = idle.
@@ -59,7 +60,7 @@ public class MainTeleOp extends LinearOpMode {
         robot.ballPath.setAlliance(alliance);
 
         DriverControls driver = new DriverControls(robot);
-        OperatorControls operator = new OperatorControls(robot, false);
+        OperatorControls operator = new OperatorControls(robot);
         boolean debugPage = false;
 
         while (opModeIsActive()) {
