@@ -271,11 +271,15 @@ public final class Constants {
          * Continuous-servo speed for one feed step. Its SIGN is the feed direction (the windmill
          * turns clockwise to feed). Negative since 2026-10-17: positive turned it the wrong way
          * on the robot. REVERSE_SPEED must always have the opposite sign.
+         * 2026-11-02: -0.6 -> -0.75 (25% faster, the team's request).
          */
-        public static final double FEED_SPEED = -0.6;
+        public static final double FEED_SPEED = -0.75;
         public static final double REVERSE_SPEED = 0.4;
-        /** Without the index switch: run this long for one quarter turn. TODO(Wed): tune. */
-        public static final double STEP_MS = 350;
+        /**
+         * Without the index switch: run this long for one quarter turn. Was 350 at -0.6; cut by
+         * the same 25% when FEED_SPEED went to -0.75. TODO: tune.
+         */
+        public static final double STEP_MS = 280;
         /** With the index switch: stop the step if no blade arrives in this time. */
         public static final double STEP_TIMEOUT_MS = 900;
         /** REV magnetic limit switch reads false when a magnet is present. */
