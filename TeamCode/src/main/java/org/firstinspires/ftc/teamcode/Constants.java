@@ -215,14 +215,14 @@ public final class Constants {
         /**
          * Speed presets in encoder ticks per second, picked with the operator's D-pad.
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
-         * TODO(Wed): tune with Launcher Tuner at the near and far shooting spots.
+         * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
+         * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1800, 2300 };
+        public static final double[] PRESETS_TPS = { 1250, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
 
-        // ---- Ball Path Test: adjusting the speed live with the D-pad ----
-        public static final double COARSE_STEP_TPS = 100;
-        public static final double FINE_STEP_TPS = 25;
+        /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
+        public static final double STEP_TPS = 80;
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 
@@ -270,11 +270,18 @@ public final class Constants {
          * Continuous-servo speed for one feed step. Its SIGN is the feed direction (the windmill
          * turns clockwise to feed). Negative since 2026-10-17: positive turned it the wrong way
          * on the robot. REVERSE_SPEED must always have the opposite sign.
+         * 2026-11-02: -0.6 -> -0.75 (25% faster, the team's request).
          */
-        public static final double FEED_SPEED = -0.6;
+        public static final double FEED_SPEED = -0.75;
         public static final double REVERSE_SPEED = 0.4;
-        /** Without the index switch: run this long for one quarter turn. TODO(Wed): tune. */
-        public static final double STEP_MS = 350;
+        /**
+         * Without the index switch: run this long for one quarter turn. Was 350 at -0.6; cut by
+         * the same 25% when FEED_SPEED went to -0.75. TODO: tune.
+         */
+        public static final double STEP_MS = 280;
+        /** Operator D-pad right / left: feed speed step, and the slowest / fastest it can go. */
+        public static final double SPEED_STEP = 0.05;
+        public static final double MIN_SPEED = 0.1, MAX_SPEED = 1.0;
         /** With the index switch: stop the step if no blade arrives in this time. */
         public static final double STEP_TIMEOUT_MS = 900;
         /** REV magnetic limit switch reads false when a magnet is present. */

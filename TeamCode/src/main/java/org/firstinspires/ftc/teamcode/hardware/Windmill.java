@@ -26,6 +26,8 @@ public class Windmill {
 
     private boolean stepping, reversing, leftMagnet, lastStepTimedOut;
     private int stepsDone;
+    /** Feed speed now: starts at FEED_SPEED, the operator's D-pad right / left changes it. */
+    private double feedSpeed = Constants.Windmill.FEED_SPEED;
 
     public Windmill(HardwareMap hw) {
         servo = new ContinuousServo(hw, Constants.Config.WINDMILL);
@@ -44,7 +46,7 @@ public class Windmill {
         leftMagnet = !magnetAtSwitch();
         lastStepTimedOut = false;
         stepTimer.reset();
-        servo.setPower(Constants.Windmill.FEED_SPEED);
+        servo.setPower(feedSpeed);
         return true;
     }
 
@@ -56,7 +58,7 @@ public class Windmill {
             if (!magnet) leftMagnet = true;
             if (leftMagnet && magnet) { finishStep(false); return; }
             if (stepTimer.milliseconds() >= Constants.Windmill.STEP_TIMEOUT_MS) finishStep(true);
-        } else if (stepTimer.milliseconds() >= Constants.Windmill.STEP_MS) {
+        } else if (stepTimer.milliseconds() >= stepMs()) {
             finishStep(false);
         }
     }
@@ -86,7 +88,7 @@ public class Windmill {
     public void drive(double fraction) {
         stepping = false;
         reversing = fraction < 0;
-        servo.setPower(fraction >= 0 ? Constants.Windmill.FEED_SPEED * fraction
+        servo.setPower(fraction >= 0 ? feedSpeed * fraction
                 : Constants.Windmill.REVERSE_SPEED * -fraction);
     }
 
@@ -94,6 +96,23 @@ public class Windmill {
         stepping = false;
         reversing = true;
         servo.setPower(Constants.Windmill.REVERSE_SPEED);
+    }
+
+    /**
+     * Set how fast it feeds, 0..1 (the feed direction is kept from FEED_SPEED), clipped to
+     * MIN_SPEED..MAX_SPEED. Used from the next step or run() / drive() call.
+     */
+    public void setFeedSpeed(double speed) {
+        speed = Math.max(Constants.Windmill.MIN_SPEED, Math.min(Constants.Windmill.MAX_SPEED, speed));
+        feedSpeed = Math.copySign(speed, Constants.Windmill.FEED_SPEED);
+    }
+
+    /** How fast it feeds now, 0..1. */
+    public double getFeedSpeed() { return Math.abs(feedSpeed); }
+
+    /** Without the index switch: a quarter turn takes longer when slower, so scale STEP_MS. */
+    private double stepMs() {
+        return Constants.Windmill.STEP_MS * Math.abs(Constants.Windmill.FEED_SPEED) / Math.abs(feedSpeed);
     }
 
     private boolean magnetAtSwitch() {

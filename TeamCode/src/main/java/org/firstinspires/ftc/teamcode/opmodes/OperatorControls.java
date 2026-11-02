@@ -20,8 +20,8 @@ import org.firstinspires.ftc.teamcode.util.Debug;
  *   Hold RIGHT TRIGGER    shoot: launcher spins up, then the windmill turns once it is at speed
  *   LEFT TRIGGER          launcher on / off
  *   LEFT BUMPER           windmill on / off
- *   D-pad UP / DOWN       launcher speed +100 / -100 tps
- *   D-pad RIGHT / LEFT    launcher speed +25 / -25 tps (only with fineSteps, i.e. Ball Path Test)
+ *   D-pad UP / DOWN       launcher speed +80 / -80 tps
+ *   D-pad RIGHT / LEFT    windmill speed +0.05 / -0.05 (starts at FEED_SPEED)
  *   CIRCLE (B)            jump to the other speed preset (near / far)
  *
  * Short rumble = launcher at speed. Hub lights: green ready, yellow spinning up, blue idle.
@@ -33,7 +33,6 @@ import org.firstinspires.ftc.teamcode.util.Debug;
 public class OperatorControls {
 
     private final Robot robot;
-    private final boolean fineSteps;
     private final ElapsedTime shootTimer = new ElapsedTime();
 
     private boolean intakeOn, launcherOn, windmillOn, windmillStarted, lastReady;
@@ -43,10 +42,8 @@ public class OperatorControls {
     private boolean shooting, stickActive, runIntake, runWindmill, runLauncher, ready;
     private double stick;
 
-    /** @param fineSteps true adds D-pad left/right for +-25 tps (testing); false leaves them unused. */
-    public OperatorControls(Robot robot, boolean fineSteps) {
+    public OperatorControls(Robot robot) {
         this.robot = robot;
-        this.fineSteps = fineSteps;
     }
 
     /** Once per loop, after robot.updateManual(). prev = the gamepad as it was last loop. */
@@ -61,13 +58,20 @@ public class OperatorControls {
             Debug.log("operator: launcher preset %s, %.0f tps", robot.launcher.getPresetName(), robot.launcher.getTargetTps());
         }
         double step = 0;
-        if (g.dpad_up && !prev.dpad_up) step = Constants.Launcher.COARSE_STEP_TPS;
-        if (g.dpad_down && !prev.dpad_down) step = -Constants.Launcher.COARSE_STEP_TPS;
-        if (fineSteps && g.dpad_right && !prev.dpad_right) step = Constants.Launcher.FINE_STEP_TPS;
-        if (fineSteps && g.dpad_left && !prev.dpad_left) step = -Constants.Launcher.FINE_STEP_TPS;
+        if (g.dpad_up && !prev.dpad_up) step = Constants.Launcher.STEP_TPS;
+        if (g.dpad_down && !prev.dpad_down) step = -Constants.Launcher.STEP_TPS;
         if (step != 0) {
             robot.launcher.setTargetTps(Range.clip(robot.launcher.getTargetTps() + step, 0, Constants.Launcher.MAX_TPS));
             Debug.log("operator: launcher target %.0f tps", robot.launcher.getTargetTps());
+        }
+
+        // Windmill speed: D-pad right faster, left slower.
+        double wStep = 0;
+        if (g.dpad_right && !prev.dpad_right) wStep = Constants.Windmill.SPEED_STEP;
+        if (g.dpad_left && !prev.dpad_left) wStep = -Constants.Windmill.SPEED_STEP;
+        if (wStep != 0) {
+            robot.windmill.setFeedSpeed(robot.windmill.getFeedSpeed() + wStep);
+            Debug.log("operator: windmill speed %.2f", robot.windmill.getFeedSpeed());
         }
 
         shooting = g.right_trigger > 0.5;
@@ -117,12 +121,10 @@ public class OperatorControls {
         t.addData("Speed", "target %.0f  actual %.0f tps  (%.0f RPM)",
                 robot.launcher.getTargetTps(), robot.launcher.getVelocityTps(), robot.launcher.getRpm());
         String next = Constants.Launcher.PRESET_NAMES[(robot.launcher.getPresetIndex() + 1) % Constants.Launcher.PRESETS_TPS.length];
-        t.addData("Adjust", fineSteps
-                ? String.format("D-pad up/down %.0f, right/left %.0f, circle = %s preset",
-                        Constants.Launcher.COARSE_STEP_TPS, Constants.Launcher.FINE_STEP_TPS, next)
-                : String.format("D-pad up/down %.0f, circle = %s preset", Constants.Launcher.COARSE_STEP_TPS, next));
-        t.addData("Windmill", stickActive ? "on the right stick" : runWindmill ? "TURNING"
-                : (shooting ? "waiting for launcher" : "stopped"));
+        t.addData("Adjust", "D-pad up/down launcher %.0f, right/left windmill %.2f, circle = %s preset",
+                Constants.Launcher.STEP_TPS, Constants.Windmill.SPEED_STEP, next);
+        t.addData("Windmill", "%s   speed %.2f", stickActive ? "on the right stick" : runWindmill ? "TURNING"
+                : (shooting ? "waiting for launcher" : "stopped"), robot.windmill.getFeedSpeed());
         boolean windmillForward = runWindmill || (stickActive && stick > 0);
         if (windmillForward && !runLauncher) t.addLine("Careful: windmill feeding with the launcher off");
     }
