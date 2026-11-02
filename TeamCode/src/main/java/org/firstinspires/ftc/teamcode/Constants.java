@@ -215,9 +215,10 @@ public final class Constants {
         /**
          * Speed presets in encoder ticks per second, picked with the operator's D-pad.
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
-         * TODO(Wed): tune with Launcher Tuner at the near and far shooting spots.
+         * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
+         * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1800, 2300 };
+        public static final double[] PRESETS_TPS = { 1250, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
 
         // ---- Ball Path Test: adjusting the speed live with the D-pad ----
