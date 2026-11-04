@@ -407,4 +407,85 @@ public final class Constants {
         /** Odometry Path Test: stop if the drive encoders and the Pinpoint disagree by more than this. */
         public static final double TRACKING_MISMATCH_IN = 12.0;
     }
+
+    // =========================================================================================
+    /**
+     * The fixed BIOBUZZ field (Competition Manual section 9) in our ARENA COORDINATES (see Auto
+     * above). The field looks the same turned 180°, so these numbers are right for red and blue.
+     * Boxes are {x1, y1, x2, y2} in inches, the real object; util/FieldMap grows them by
+     * ROBOT_HALF_IN + CLEARANCE_IN to get where the robot's centre may not go.
+     */
+    public static final class Field {
+        private Field() {}
+
+        /** Half the robot's 18 in width. */
+        public static final double ROBOT_HALF_IN = 9.0;
+        /** Extra room kept from the hive frame and the flowers. */
+        public static final double CLEARANCE_IN = 2.0;
+        /**
+         * In AUTO our side is x 0 to 72 (columns A-C for red, D-F for blue). Crossing it risks a
+         * MAJOR FOUL (G402), so the whole robot stays on our side.
+         */
+        public static final double OUR_SIDE_MAX_X = 72.0;
+        /**
+         * Hive frame: the A-shaped side on our half stands on a floor bar at x ≈ 47.3 (49.46 in
+         * frame, centred), y 52.5 to 91.5 (38.95 in deep). The hives hang 30.6 in up, out of reach.
+         * Flowers: about 10 in across, on our wall at y ≈ 48 and on the left wall at x ≈ 48.
+         */
+        public static final double[][] OBSTACLES = {
+                { 46.3, 52.5, 48.3, 91.5 },
+                { 0, 43, 10, 53 },
+                { 43, 134, 53, 144 },
+        };
+        public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the left wall" };
+        /** Our LOADING ZONE: AUTO PARK = the robot at least partly inside it at the end of AUTO. */
+        public static final double[] LOADING_ZONE = { 0, 96, 11, 119 };
+        /** Route planning grid, inches. */
+        public static final double GRID_IN = 2.0;
+    }
+
+    // =========================================================================================
+    /**
+     * Auto Compete: shoot the 4 preloads into our hive, then PARK in our Loading Zone.
+     * Poses are {x, y, heading} in ARENA COORDINATES. Heading 180° = the intake (front) faces our
+     * wall, so the launcher at the back faces the hive.
+     */
+    public static final class Compete {
+        private Compete() {}
+
+        /**
+         * Start: launcher side against our wall, centred on the hive (y 72), as the team shot in
+         * practice. Legal per G304: touching our wall, our side, not in the Loading Zone, clear
+         * of the flower. TODO: measure the robot centre on the real start spot.
+         */
+        public static final double[] START_POSE = { 9, 72, 180 };
+        /** Where to shoot from. The same as START_POSE = shoot without moving. */
+        public static final double[] SHOOT_POSE = { 9, 72, 180 };
+        /** Where to park: well inside the Loading Zone (only partly inside is needed). */
+        public static final double[] PARK_POSE = { 12, 108, 180 };
+
+        public static final int PRELOADS = 4;
+        /** Launcher preset for the shots (0 = NEAR). */
+        public static final int SHOOT_PRESET = 0;
+        /** Stop feeding this long after the windmill starts, even if not every shot was counted. */
+        public static final double FEED_MAX_S = 5.0;
+
+        /** AUTO is 30 s. */
+        public static final double AUTO_LENGTH_S = 30.0;
+        /** Leave for the Loading Zone no later than this many seconds before the end... */
+        public static final double PARK_RESERVE_S = 8.0;
+        /** ...or earlier if the trip needs it: route length at this speed, plus the margin. */
+        public static final double PARK_SPEED_IN_PER_S = 12.0;
+        public static final double PARK_MARGIN_S = 2.0;
+
+        // ---- Bumps ----
+        /** Stuck: less than STALL_MIN_IN closer to the target in STALL_WINDOW_S, still away from it. */
+        public static final double STALL_WINDOW_S = 0.75;
+        public static final double STALL_MIN_IN = 1.0;
+        public static final double STALL_FAR_IN = 3.0;
+        /** After a bump: back off this far the way we came, step this far sideways, plan again. */
+        public static final double BACK_OFF_IN = 6.0;
+        public static final double SIDESTEP_IN = 8.0;
+        public static final int MAX_RETRIES = 2;
+    }
 }
