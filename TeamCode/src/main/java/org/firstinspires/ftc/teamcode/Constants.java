@@ -484,12 +484,20 @@ public final class Constants {
         /** Launcher preset for the shots (0 = NEAR). */
         public static final int SHOOT_PRESET = 0;
         /**
-         * Shooting: one windmill quarter turn (one ball) at a time, and the next only once the wheel
-         * is back at full speed, so no ball goes in on a slowed wheel and just drops. One extra
-         * turn in case a ball did not go on its turn. Stop after FEED_MAX_S whatever happens.
+         * Shooting: the windmill turns while the wheel is at full speed and pauses the moment a ball
+         * goes through (the wheel dips SHOT_DIP_TPS below target), until the wheel is back within
+         * READY_TOLERANCE_TPS. So every ball meets a full-speed wheel and none is skipped.
+         * 2026-11-04: replaced single 280 ms quarter turns, which fired only 2 of 4 balls.
+         * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
          */
-        public static final int EXTRA_FEED_STEPS = 1;
+        public static final double SHOT_DIP_TPS = 100;
         public static final double FEED_MAX_S = 8.0;
+        /**
+         * At the end, push gently sideways against our wall for this long, so the robot finishes
+         * flat against it (odometry alone left it a few inches off).
+         */
+        public static final double WALL_SQUEEZE_POWER = 0.35;
+        public static final double WALL_SQUEEZE_S = 0.8;
 
         /** AUTO is 30 s. */
         public static final double AUTO_LENGTH_S = 30.0;

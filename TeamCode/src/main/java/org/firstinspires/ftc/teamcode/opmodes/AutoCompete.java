@@ -23,7 +23,7 @@ import java.util.List;
  *
  *  1. START at Constants.Compete.START_POSE: intake against a wall, launcher facing the hive.
  *  2. Drive to SHOOT_POSE if it is somewhere else (the same = shoot without moving).
- *  3. Spin up, then feed one ball (a windmill quarter turn) each time the wheel is at full speed.
+ *  3. Spin up; the windmill feeds while the wheel is at full speed and pauses after each shot.
  *  4. Drive to PARK_POSE in the Loading Zone, around the hive frame and flowers (util/FieldMap).
  *
  * Time: leaves for the Loading Zone no later than PARK_RESERVE_S before the end of AUTO, or
@@ -139,13 +139,14 @@ public abstract class AutoCompete extends LinearOpMode {
         }
         if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
         if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
+        if (parked == Drive.ARRIVED) squeezeAgainstWall();
         robot.stop();
         Pose2D p = robot.localizer.getPose();
         boolean inZone = touchesLoadingZone(p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH), left);
-        Debug.log("compete: done at %.0f s, %d feeds, drive %s, %s", match.seconds(), shots, parked,
+        Debug.log("compete: done at %.0f s, %d shots, drive %s, %s", match.seconds(), shots, parked,
                 inZone ? "PARKED in the Loading Zone" : "NOT in the Loading Zone");
         while (opModeIsActive()) {
-            telemetry.addData("Done", "%d feeds, %s", shots, inZone ? "PARKED" : "NOT in the Loading Zone");
+            telemetry.addData("Done", "%d shots, %s", shots, inZone ? "PARKED" : "NOT in the Loading Zone");
             telemetry.update();
             idle();
         }
@@ -154,46 +155,50 @@ public abstract class AutoCompete extends LinearOpMode {
     // ---- Shooting ------------------------------------------------------------------------------
 
     /**
-     * One ball at a time: a windmill quarter turn only when the wheel is at full speed (held for
-     * READY_HOLD_MS), so every ball gets full thrust. If the wheel cannot get back up within
-     * SHOOT_MAX_WAIT_S (low battery), feed anyway rather than keep the balls. Stops at the leave time.
+     * The windmill turns only while the wheel is at full speed, and pauses as soon as a ball goes
+     * through (a dip of SHOT_DIP_TPS) until the wheel has recovered. If the wheel never gets up to
+     * speed in SHOOT_MAX_WAIT_S (low battery), feed anyway. Stops after PRELOADS shots, FEED_MAX_S,
+     * or the leave time.
      */
     private void shoot() {
         step = "shooting";
-        int turns = Constants.Compete.PRELOADS + Constants.Compete.EXTRA_FEED_STEPS;
         ElapsedTime feeding = new ElapsedTime(), waiting = new ElapsedTime();
+        boolean started = false, inDip = false;
         double lowest = Double.MAX_VALUE;
-        while (opModeIsActive() && match.seconds() < leaveAt && feeding.seconds() < Constants.Compete.FEED_MAX_S) {
+        while (opModeIsActive() && match.seconds() < leaveAt && shots < Constants.Compete.PRELOADS) {
             robot.updateManual();
-            robot.windmill.update();
-            double v = robot.launcher.getVelocityTps();
-            if (shots > 0) lowest = Math.min(lowest, v);
-            if (!robot.windmill.isStepping()) {
-                if (shots >= turns) break;
+            double v = robot.launcher.getVelocityTps(), target = robot.launcher.getTargetTps();
+            boolean ready = v >= target - Constants.Launcher.READY_TOLERANCE_TPS;
+            if (!started) {
                 if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
-                    if (shots > 0) Debug.log("compete: ball %d, wheel dipped to %.0f tps", shots, lowest);
-                    if (shots == 0) feeding.reset();
-                    else if (!robot.launcher.atSpeed()) Debug.warn("compete: wheel not back to speed (%.0f tps), feeding anyway", v);
-                    robot.windmill.requestStep();
-                    shots++;
-                    lowest = Double.MAX_VALUE;
-                    waiting.reset();
-                    Debug.log("compete: feed %d of %d at %.1f s, wheel %.0f tps", shots, turns, match.seconds(), v);
+                    started = true;
+                    feeding.reset();
+                    Debug.log("compete: feeding at %.0f tps", v);
                 }
             } else {
-                waiting.reset();
+                if (feeding.seconds() > Constants.Compete.FEED_MAX_S) {
+                    Debug.warn("compete: feeding time up after %d shots", shots);
+                    break;
+                }
+                if (!inDip && v < target - Constants.Compete.SHOT_DIP_TPS) {
+                    inDip = true;               // a ball went through: pause until the wheel recovers
+                    lowest = v;
+                    waiting.reset();
+                } else if (inDip) {
+                    lowest = Math.min(lowest, v);
+                    if (ready || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
+                        inDip = false;
+                        shots++;
+                        Debug.log("compete: shot %d at %.1f s, wheel dipped to %.0f tps", shots, match.seconds(), lowest);
+                    }
+                }
+                if (inDip) robot.windmill.hold();
+                else robot.windmill.run();
             }
-            show("feed %d of %d, launcher %.0f / %.0f tps", shots, turns, v, robot.launcher.getTargetTps());
+            show("%d of %d shots, launcher %.0f / %.0f tps", shots, Constants.Compete.PRELOADS, v, robot.launcher.getTargetTps());
         }
-        // Let the last step finish so it does not stop half way with a ball in the gap.
-        ElapsedTime last = new ElapsedTime();
-        while (opModeIsActive() && last.seconds() < 0.6) {    // the step, then the last ball's dip
-            robot.updateManual();
-            robot.windmill.update();
-            lowest = Math.min(lowest, robot.launcher.getVelocityTps());
-        }
-        if (shots > 0) Debug.log("compete: ball %d, wheel dipped to %.0f tps", shots, lowest);
-        if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d feeds", shots);
+        robot.windmill.hold();
+        if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d shots", shots);
     }
 
     /** Leave for the Loading Zone at PARK_RESERVE_S before the end, or earlier if the trip is long. */
@@ -314,6 +319,21 @@ public abstract class AutoCompete extends LinearOpMode {
             show("%s: %.1f in to go", what, follower.distanceToGo());
         }
         follower.abort();
+    }
+
+    /** Push gently toward our wall (field -x) for a moment, so the robot ends flat against it. */
+    private void squeezeAgainstWall() {
+        step = "against the wall";
+        ElapsedTime t = new ElapsedTime();
+        while (opModeIsActive() && t.seconds() < Constants.Compete.WALL_SQUEEZE_S) {
+            robot.updateManual();
+            double h = robot.localizer.getPose().getHeading(AngleUnit.RADIANS);
+            robot.drive.driveFieldCentric(-Constants.Compete.WALL_SQUEEZE_POWER, 0, 0, h, 1.0);
+            show("pushing against our wall");
+        }
+        robot.drive.stop();
+        Pose2D p = robot.localizer.getPose();
+        Debug.log("compete: against the wall at %.1f, %.1f", p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
     }
 
     // ---- Checks and telemetry ------------------------------------------------------------------
