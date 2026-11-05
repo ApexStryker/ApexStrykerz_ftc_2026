@@ -216,9 +216,10 @@ public final class Constants {
          * Speed presets in encoder ticks per second, picked with the operator's D-pad.
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
          * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
+         * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs.
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1250, 2300 };
+        public static final double[] PRESETS_TPS = { 1325, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
 
         /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
@@ -430,16 +431,21 @@ public final class Constants {
         /**
          * Hive frame: the A-shaped side on our half stands on a floor bar at x ≈ 47.3 (49.46 in
          * frame, centred), y 52.5 to 91.5 (38.95 in deep). The hives hang 30.6 in up, out of reach.
-         * Flowers: about 10 in across, on our wall at y ≈ 48 and on the left wall at x ≈ 48.
+         * Flowers: about 10 in across, on our wall at y ≈ 96 and on the right-hand wall at x ≈ 48.
+         *
+         * 2026-11-04: MIRRORED (y -> 144 - y) from the manual's drawing to match the practice
+         * field as the robot measures it. On the first run the robot drove +y from the start,
+         * bumped at y ≈ 85 (the flower), and parked in the corner; the real Loading Zone is the
+         * other way along our wall, between the start and the right-hand corner.
          */
         public static final double[][] OBSTACLES = {
                 { 46.3, 52.5, 48.3, 91.5 },
-                { 0, 43, 10, 53 },
-                { 43, 134, 53, 144 },
+                { 0, 91, 10, 101 },
+                { 43, 0, 53, 10 },
         };
-        public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the left wall" };
+        public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the right-hand wall" };
         /** Our LOADING ZONE: AUTO PARK = the robot at least partly inside it at the end of AUTO. */
-        public static final double[] LOADING_ZONE = { 0, 96, 11, 119 };
+        public static final double[] LOADING_ZONE = { 0, 25, 11, 48 };
         /** Route planning grid, inches. */
         public static final double GRID_IN = 2.0;
     }
@@ -462,7 +468,7 @@ public final class Constants {
         /** Where to shoot from. The same as START_POSE = shoot without moving. */
         public static final double[] SHOOT_POSE = { 9, 72, 180 };
         /** Where to park: well inside the Loading Zone (only partly inside is needed). */
-        public static final double[] PARK_POSE = { 12, 108, 180 };
+        public static final double[] PARK_POSE = { 12, 36, 180 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */
