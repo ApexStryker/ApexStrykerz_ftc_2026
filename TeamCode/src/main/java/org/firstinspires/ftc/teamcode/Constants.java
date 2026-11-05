@@ -431,21 +431,16 @@ public final class Constants {
         /**
          * Hive frame: the A-shaped side on our half stands on a floor bar at x ≈ 47.3 (49.46 in
          * frame, centred), y 52.5 to 91.5 (38.95 in deep). The hives hang 30.6 in up, out of reach.
-         * Flowers: about 10 in across, on our wall at y ≈ 96 and on the right-hand wall at x ≈ 48.
-         *
-         * 2026-11-04: MIRRORED (y -> 144 - y) from the manual's drawing to match the practice
-         * field as the robot measures it. On the first run the robot drove +y from the start,
-         * bumped at y ≈ 85 (the flower), and parked in the corner; the real Loading Zone is the
-         * other way along our wall, between the start and the right-hand corner.
+         * Flowers: about 10 in across, on our wall at y ≈ 48 and on the left wall at x ≈ 48.
          */
         public static final double[][] OBSTACLES = {
                 { 46.3, 52.5, 48.3, 91.5 },
-                { 0, 91, 10, 101 },
-                { 43, 0, 53, 10 },
+                { 0, 43, 10, 53 },
+                { 43, 134, 53, 144 },
         };
-        public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the right-hand wall" };
-        /** Our LOADING ZONE: AUTO PARK = the robot at least partly inside it at the end of AUTO. */
-        public static final double[] LOADING_ZONE = { 0, 25, 11, 48 };
+        public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the left wall" };
+        /** Our LOADING ZONE (manual Figure 9-2): AUTO PARK = the robot at least partly inside it. */
+        public static final double[] LOADING_ZONE = { 0, 96, 11, 119 };
         /** Route planning grid, inches. */
         public static final double GRID_IN = 2.0;
     }
@@ -460,15 +455,21 @@ public final class Constants {
         private Compete() {}
 
         /**
-         * Start: launcher side against our wall, centred on the hive (y 72), as the team shot in
-         * practice. Legal per G304: touching our wall, our side, not in the Loading Zone, clear
-         * of the flower. TODO: measure the robot centre on the real start spot.
+         * Start: against the RIGHT-HAND side wall (y = 0), intake to the wall (heading -90°), the
+         * launcher facing along the wall's normal straight at our hive, in line with the hive frame
+         * (x ≈ 47 from our wall). Legal per G304: touching a wall, our side, not in the Loading
+         * Zone, clear of the flowers. TODO: measure how far the robot centre is from our wall.
+         * (2026-11-04: first set to our wall at (9, 72, 180°); the team actually starts here.)
          */
-        public static final double[] START_POSE = { 9, 72, 180 };
+        public static final double[] START_POSE = { 47, 9, -90 };
         /** Where to shoot from. The same as START_POSE = shoot without moving. */
-        public static final double[] SHOOT_POSE = { 9, 72, 180 };
-        /** Where to park: well inside the Loading Zone (only partly inside is needed). */
-        public static final double[] PARK_POSE = { 12, 36, 180 };
+        public static final double[] SHOOT_POSE = { 47, 9, -90 };
+        /**
+         * Where to park: well inside the Loading Zone (only partly inside is needed). From the start
+         * the route runs toward our wall, turns the corner past the flower on our wall and the hive
+         * frame, then goes along our wall into the zone. Same heading: no turning on the way.
+         */
+        public static final double[] PARK_POSE = { 12, 108, -90 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */

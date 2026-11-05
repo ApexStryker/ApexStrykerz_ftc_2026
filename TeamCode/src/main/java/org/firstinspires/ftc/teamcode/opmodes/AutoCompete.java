@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * The match autonomous: shoot the 4 preloads into our hive, then PARK in our Loading Zone.
  *
- *  1. START at Constants.Compete.START_POSE: launcher side against our wall, facing the hive.
+ *  1. START at Constants.Compete.START_POSE: intake against a wall, launcher facing the hive.
  *  2. Drive to SHOOT_POSE if it is somewhere else (the same = shoot without moving).
  *  3. Spin up, feed with the windmill once at speed, count the shots by the speed dips.
  *  4. Drive to PARK_POSE in the Loading Zone, around the hive frame and flowers (util/FieldMap).
