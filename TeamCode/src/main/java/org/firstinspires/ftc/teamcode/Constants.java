@@ -233,7 +233,10 @@ public final class Constants {
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 
-        /** Ready when within this many tps of target... */
+        /**
+         * Ready when within this many tps of target... TODO(next session): once our loop holds the
+         * speed steadily, tighten to about 25 so every ball leaves at nearly the same speed.
+         */
         public static final double READY_TOLERANCE_TPS = 60;
         /** ...continuously for this long. */
         public static final double READY_HOLD_MS = 120;
@@ -242,7 +245,35 @@ public final class Constants {
         /** Give up waiting for a shot this long after a feed (empty windmill pocket). */
         public static final double SHOT_TIMEOUT_MS = 700;
 
-        /** Custom velocity PIDF. false = SDK defaults. Tune with Launcher Tuner. */
+        /**
+         * true = our own speed loop in hardware/Launcher (battery-corrected base power, correction
+         * toward the target, full-power boost after each ball). false = the hub's built-in velocity
+         * PIDF below, as before 2026-11-04 (that one swung about 1220-1380 around 1310).
+         */
+        public static final boolean OWN_SPEED_LOOP = true;
+        /**
+         * Our loop's gains. Power = (KS + KV x target) x NOMINAL_VOLTS / battery + KP x error + KI x
+         * (sum of error x seconds), with error = target - actual in tps.
+         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. Starting value from
+         * the 2026-10-12 note (about 1320 tps at 50% power): KV ≈ 0.5 / 1320. TODO(next session):
+         * run "Calibrate" in Launcher Tuner (triangle) and copy the KV and KS it logs here.
+         * KP, KI: TODO(next session): tune in Launcher Tuner, watching the speed hold steady and
+         * recover quickly after each ball.
+         */
+        public static final double KV = 0.00038, KS = 0.0;
+        public static final double KP = 0.002, KI = 0.002;
+        /** The most the KI term may add or remove, as motor power (stops wind-up). */
+        public static final double I_LIMIT = 0.1;
+        /** Full power while the wheel is more than this slow (right after a ball), to recover fast. */
+        public static final double BOOST_BELOW_TPS = 80;
+        /** The battery voltage KV and KS are measured at; base power scales by NOMINAL / battery. */
+        public static final double NOMINAL_VOLTS = 12.0;
+        /** Read the battery this often (a reading costs a few ms). */
+        public static final double VOLTS_READ_MS = 100;
+        /** Launcher Tuner calibration: the two fixed powers, and how long to run each. */
+        public static final double CAL_POWER_LOW = 0.35, CAL_POWER_HIGH = 0.65, CAL_STEP_S = 2.5;
+
+        /** The hub's velocity PIDF, only when OWN_SPEED_LOOP is false. false = SDK defaults. */
         public static final boolean USE_CUSTOM_PIDF = false;
         public static final double P = 10, I = 3, D = 0, F = 12;
 
