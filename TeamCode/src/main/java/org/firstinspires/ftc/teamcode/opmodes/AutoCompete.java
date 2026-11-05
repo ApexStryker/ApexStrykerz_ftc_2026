@@ -31,20 +31,50 @@ import java.util.List;
  * Bumps: if the robot stops getting closer (a robot or something else in the way), it backs off,
  * steps sideways, plans again and retries, up to MAX_RETRIES times.
  *
- * Everything is in ARENA coordinates; the field looks the same for red and blue, so there is
- * nothing to mirror. Only appears on the Driver Station when Constants.USE_PINPOINT is true.
+ * Two entries on the Driver Station, one per start slot:
+ *  - "Auto Compete Right": start against the RIGHT-hand side wall (the poses in Constants.Compete
+ *    as written; the one the team tested first);
+ *  - "Auto Compete Left": the mirror image. The start, route, park spot and the field map (hive
+ *    legs, flowers, Loading Zone) are all flipped left-right: y -> 144 - y, heading -> -heading.
+ * Everything is in ARENA coordinates. Only appears on the Driver Station when
+ * Constants.USE_PINPOINT is true.
  */
-public class AutoCompete extends LinearOpMode {
+public abstract class AutoCompete extends LinearOpMode {
 
     @OpModeRegistrar
     public static void register(OpModeManager manager) {
         if (!Constants.USE_PINPOINT) return;
-        manager.register(new OpModeMeta.Builder()
-                .setName("Auto Compete")
+        manager.register(meta("Auto Compete Right"), Right.class);
+        manager.register(meta("Auto Compete Left"), Left.class);
+    }
+
+    private static OpModeMeta meta(String name) {
+        return new OpModeMeta.Builder()
+                .setName(name)
                 .setGroup("ApexStrykerz")
                 .setFlavor(OpModeMeta.Flavor.AUTONOMOUS)
                 .setTransitionTarget("Main TeleOp")
-                .build(), AutoCompete.class);
+                .build();
+    }
+
+    /** Start against the right-hand side wall: Constants.Compete as written. */
+    public static class Right extends AutoCompete { public Right() { super(false); } }
+
+    /** Start against the left-hand side wall: everything mirrored. */
+    public static class Left extends AutoCompete { public Left() { super(true); } }
+
+    /** True for the Left slot: mirror everything. */
+    private final boolean left;
+
+    protected AutoCompete(boolean left) { this.left = left; }
+
+    /** A pose {x, y, heading} or point {x, y} for this slot: as written for Right, mirrored for Left. */
+    static double[] forSlot(double[] p, boolean left) {
+        if (!left) return p.clone();
+        double[] m = p.clone();
+        m[1] = Constants.Auto.ARENA_SIZE_IN - p[1];
+        if (m.length > 2) m[2] = AngleUnit.normalizeDegrees(-p[2]);
+        return m;
     }
 
     /** How a drive ended. */
@@ -64,14 +94,18 @@ public class AutoCompete extends LinearOpMode {
     public void runOpMode() {
         robot = new Robot(hardwareMap);
         follower = new PathFollower(robot.drive, robot.localizer);
-        map = FieldMap.compete();
-        double[] start = Constants.Compete.START_POSE, shoot = Constants.Compete.SHOOT_POSE, park = Constants.Compete.PARK_POSE;
+        map = FieldMap.compete(left);
+        double[] start = forSlot(Constants.Compete.START_POSE, left);
+        double[] shoot = forSlot(Constants.Compete.SHOOT_POSE, left);
+        double[] park = forSlot(Constants.Compete.PARK_POSE, left);
+        String slot = left ? "LEFT" : "RIGHT";
         String problems = checkPlan(start, shoot, park);
 
         while (opModeInInit()) {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
-            telemetry.addData("Start", "%.0f, %.0f, %.0f°  (launcher to the hive, intake to our wall)", start[0], start[1], start[2]);
+            telemetry.addLine(slot + " SLOT: intake against the " + slot + " side wall, launcher facing the hive");
+            telemetry.addData("Start", "%.0f, %.0f, %.0f°", start[0], start[1], start[2]);
             telemetry.addData("Plan", "shoot %d at %.0f, %.0f, then park at %.0f, %.0f",
                     Constants.Compete.PRELOADS, shoot[0], shoot[1], park[0], park[1]);
             telemetry.addLine(problems.isEmpty() ? "Map check: OK" : "MAP CHECK: " + problems);
@@ -84,7 +118,7 @@ public class AutoCompete extends LinearOpMode {
         robot.setPose(start[0], start[1], start[2]);
         robot.launcher.selectPreset(Constants.Compete.SHOOT_PRESET);
         robot.launcher.spinUp();    // spins up while driving to the shooting spot
-        Debug.log("compete: start %.0f, %.0f, %.0f°", start[0], start[1], start[2]);
+        Debug.log("compete: %s slot, start %.0f, %.0f, %.0f°", slot, start[0], start[1], start[2]);
 
         if (Math.hypot(shoot[0] - start[0], shoot[1] - start[1]) > Constants.Auto.POSITION_TOLERANCE_IN
                 || Math.abs(AngleUnit.normalizeDegrees(shoot[2] - start[2])) > Constants.Auto.HEADING_TOLERANCE_DEG) {
@@ -99,14 +133,15 @@ public class AutoCompete extends LinearOpMode {
         step = "to the Loading Zone";
         Drive parked = Drive.ARRIVED;
         for (double[] v : Constants.Compete.PARK_VIA) {
-            parked = driveTo(new double[] { v[0], v[1], park[2] }, false);
+            double[] w = forSlot(v, left);
+            parked = driveTo(new double[] { w[0], w[1], park[2] }, false);
             if (parked != Drive.ARRIVED) break;
         }
         if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
         if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
         robot.stop();
         Pose2D p = robot.localizer.getPose();
-        boolean inZone = touchesLoadingZone(p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
+        boolean inZone = touchesLoadingZone(p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH), left);
         Debug.log("compete: done at %.0f s, %d feeds, drive %s, %s", match.seconds(), shots, parked,
                 inZone ? "PARKED in the Loading Zone" : "NOT in the Loading Zone");
         while (opModeIsActive()) {
@@ -166,7 +201,7 @@ public class AutoCompete extends LinearOpMode {
         Pose2D p = robot.localizer.getPose();
         double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
         double len = 0;
-        for (double[] v : parkLegs(park)) {
+        for (double[] v : parkLegs(park, left)) {
             List<double[]> route = map.route(x, y, v[0], v[1]);
             if (route != null) len += FieldMap.length(x, y, route);
             x = v[0];
@@ -292,11 +327,11 @@ public class AutoCompete extends LinearOpMode {
         if (b != null) s.append("shooting spot too close to ").append(b).append(". ");
         b = map.blockedBy(park[0], park[1]);
         if (b != null) s.append("park spot too close to ").append(b).append(". ");
-        if (!touchesLoadingZone(park[0], park[1])) s.append("park spot is not in the Loading Zone. ");
+        if (!touchesLoadingZone(park[0], park[1], left)) s.append("park spot is not in the Loading Zone. ");
         if (s.length() == 0) {
             if (map.route(start[0], start[1], shoot[0], shoot[1]) == null) s.append("no route to the shooting spot. ");
             double x = shoot[0], y = shoot[1];
-            for (double[] v : parkLegs(park)) {
+            for (double[] v : parkLegs(park, left)) {
                 if (map.blockedBy(v[0], v[1]) != null) { s.append("a park way point is too close to ").append(map.blockedBy(v[0], v[1])).append(". "); break; }
                 if (map.route(x, y, v[0], v[1]) == null) { s.append("no route to the Loading Zone. "); break; }
                 x = v[0];
@@ -306,17 +341,17 @@ public class AutoCompete extends LinearOpMode {
         return s.toString().trim();
     }
 
-    /** The way points to the Loading Zone, then the park spot itself. */
-    static List<double[]> parkLegs(double[] park) {
+    /** The way points to the Loading Zone for this slot, then the park spot itself. */
+    static List<double[]> parkLegs(double[] park, boolean left) {
         List<double[]> legs = new ArrayList<>();
-        for (double[] v : Constants.Compete.PARK_VIA) legs.add(v);
+        for (double[] v : Constants.Compete.PARK_VIA) legs.add(forSlot(v, left));
         legs.add(park);
         return legs;
     }
 
     /** True if an 18 in robot centred at (x, y) is at least partly in our Loading Zone (AUTO PARK). */
-    static boolean touchesLoadingZone(double x, double y) {
-        double[] z = Constants.Field.LOADING_ZONE;
+    static boolean touchesLoadingZone(double x, double y, boolean left) {
+        double[] z = FieldMap.forSlot(Constants.Field.LOADING_ZONE, left);
         double h = Constants.Field.ROBOT_HALF_IN;
         return x - h < z[2] && x + h > z[0] && y - h < z[3] && y + h > z[1];
     }
