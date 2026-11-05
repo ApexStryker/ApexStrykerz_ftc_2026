@@ -431,10 +431,12 @@ public final class Constants {
         /**
          * Hive frame: the A-shaped side on our half stands on a floor bar at x ≈ 47.3 (49.46 in
          * frame, centred), y 52.5 to 91.5 (38.95 in deep). The hives hang 30.6 in up, out of reach.
+         * 2026-11-04: the robot bumped a leg with its edge near x 43, so the legs' feet are wider
+         * than the bar: keep out x 42 to 53.
          * Flowers: about 10 in across, on our wall at y ≈ 48 and on the left wall at x ≈ 48.
          */
         public static final double[][] OBSTACLES = {
-                { 46.3, 52.5, 48.3, 91.5 },
+                { 42, 52.5, 53, 91.5 },
                 { 0, 43, 10, 53 },
                 { 43, 134, 53, 144 },
         };
@@ -465,11 +467,18 @@ public final class Constants {
         /** Where to shoot from. The same as START_POSE = shoot without moving. */
         public static final double[] SHOOT_POSE = { 47, 9, -90 };
         /**
-         * Where to park: well inside the Loading Zone (only partly inside is needed). From the start
-         * the route runs toward our wall, turns the corner past the flower on our wall and the hive
-         * frame, then goes along our wall into the zone. Same heading: no turning on the way.
+         * The way to the Loading Zone, {x, y} in order (each leg still checked against the map):
+         * along the right-hand wall toward our wall, then along our wall 3 in clear of the flower
+         * on it (keep-out ends at x 21), then in against our wall once past the flower (y > 64).
+         * 2026-11-04: added after a run that cut diagonally, bumped near the hive frame and parked
+         * just outside the zone. Following the walls is easier to repeat.
          */
-        public static final double[] PARK_POSE = { 12, 108, -90 };
+        public static final double[][] PARK_VIA = { { 22, 12 }, { 22, 66 }, { 10, 80 } };
+        /**
+         * Where to park: 1 in off our wall, in the middle of the Loading Zone (y 96-119), so the
+         * whole robot is inside even if odometry is a few inches off. Same heading: no turning.
+         */
+        public static final double[] PARK_POSE = { 10, 108, -90 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */

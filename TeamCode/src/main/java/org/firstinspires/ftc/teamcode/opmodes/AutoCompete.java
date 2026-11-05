@@ -97,7 +97,13 @@ public class AutoCompete extends LinearOpMode {
         robot.launcher.stop();
 
         step = "to the Loading Zone";
-        Drive parked = driveTo(park, false);
+        Drive parked = Drive.ARRIVED;
+        for (double[] v : Constants.Compete.PARK_VIA) {
+            parked = driveTo(new double[] { v[0], v[1], park[2] }, false);
+            if (parked != Drive.ARRIVED) break;
+        }
+        if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
+        if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
         robot.stop();
         Pose2D p = robot.localizer.getPose();
         boolean inZone = touchesLoadingZone(p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
@@ -150,9 +156,14 @@ public class AutoCompete extends LinearOpMode {
     private void planLeaveTime(double[] park) {
         Pose2D p = robot.localizer.getPose();
         double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
-        List<double[]> route = map.route(x, y, park[0], park[1]);
-        double tripS = route == null ? 0 : FieldMap.length(x, y, route) / Constants.Compete.PARK_SPEED_IN_PER_S
-                + Constants.Compete.PARK_MARGIN_S;
+        double len = 0;
+        for (double[] v : parkLegs(park)) {
+            List<double[]> route = map.route(x, y, v[0], v[1]);
+            if (route != null) len += FieldMap.length(x, y, route);
+            x = v[0];
+            y = v[1];
+        }
+        double tripS = len / Constants.Compete.PARK_SPEED_IN_PER_S + Constants.Compete.PARK_MARGIN_S;
         leaveAt = Constants.Compete.AUTO_LENGTH_S - Math.max(Constants.Compete.PARK_RESERVE_S, tripS);
         Debug.log("compete: park trip about %.1f s, leave by %.1f s", tripS, leaveAt);
     }
@@ -275,9 +286,23 @@ public class AutoCompete extends LinearOpMode {
         if (!touchesLoadingZone(park[0], park[1])) s.append("park spot is not in the Loading Zone. ");
         if (s.length() == 0) {
             if (map.route(start[0], start[1], shoot[0], shoot[1]) == null) s.append("no route to the shooting spot. ");
-            if (map.route(shoot[0], shoot[1], park[0], park[1]) == null) s.append("no route to the Loading Zone. ");
+            double x = shoot[0], y = shoot[1];
+            for (double[] v : parkLegs(park)) {
+                if (map.blockedBy(v[0], v[1]) != null) { s.append("a park way point is too close to ").append(map.blockedBy(v[0], v[1])).append(". "); break; }
+                if (map.route(x, y, v[0], v[1]) == null) { s.append("no route to the Loading Zone. "); break; }
+                x = v[0];
+                y = v[1];
+            }
         }
         return s.toString().trim();
+    }
+
+    /** The way points to the Loading Zone, then the park spot itself. */
+    static List<double[]> parkLegs(double[] park) {
+        List<double[]> legs = new ArrayList<>();
+        for (double[] v : Constants.Compete.PARK_VIA) legs.add(v);
+        legs.add(park);
+        return legs;
     }
 
     /** True if an 18 in robot centred at (x, y) is at least partly in our Loading Zone (AUTO PARK). */
