@@ -17,7 +17,8 @@ import org.firstinspires.ftc.teamcode.util.Debug;
  *   CROSS (A)             intake + side wheels on / off
  *   RIGHT STICK up/down   intake, side wheels and windmill together, as fast as pushed:
  *                         up = toward the launcher, down = backward (push balls out)
- *   Hold RIGHT TRIGGER    shoot: launcher spins up, then the windmill turns once it is at speed
+ *   Hold RIGHT TRIGGER    shoot: launcher spins up, then the windmill turns once it is at speed,
+ *                         pausing after each ball until the wheel is back to speed
  *   LEFT TRIGGER          launcher on / off
  *   LEFT BUMPER           windmill on / off
  *   D-pad UP / DOWN       launcher speed +80 / -80 tps          } all three OFF while
@@ -36,6 +37,9 @@ public class OperatorControls {
     private final ElapsedTime shootTimer = new ElapsedTime();
 
     private boolean intakeOn, launcherOn, windmillOn, windmillStarted, lastReady;
+    /** A ball just went through: the windmill waits for the wheel to recover. */
+    private boolean recovering;
+    private final ElapsedTime recoverTimer = new ElapsedTime();
     private int lastLed;
 
     // What happened this loop, for telemetry.
@@ -77,12 +81,24 @@ public class OperatorControls {
         }
 
         shooting = g.right_trigger > 0.5;
-        if (shooting && prev.right_trigger <= 0.5) { shootTimer.reset(); windmillStarted = false; }
-        // Once the windmill starts it keeps going while RT is held, even though each ball
-        // leaving makes the launcher dip below speed for a moment.
+        if (shooting && prev.right_trigger <= 0.5) { shootTimer.reset(); windmillStarted = false; recovering = false; }
         if (shooting && !windmillStarted
                 && (robot.launcher.atSpeed() || shootTimer.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S)) {
             windmillStarted = true;
+        }
+        // After each ball the wheel dips; the windmill pauses until it is back to speed, so every
+        // ball leaves at full speed (2026-11-04: continuous feeding sent follow-up balls short).
+        if (shooting && windmillStarted) {
+            double v = robot.launcher.getVelocityTps(), target = robot.launcher.getTargetTps();
+            if (!recovering && v < target - Constants.Windmill.PAUSE_DIP_TPS) {
+                recovering = true;
+                recoverTimer.reset();
+            } else if (recovering && (v >= target - Constants.Launcher.READY_TOLERANCE_TPS
+                    || recoverTimer.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S)) {
+                recovering = false;
+            }
+        } else {
+            recovering = false;
         }
 
         runLauncher = launcherOn || shooting;
@@ -93,7 +109,7 @@ public class OperatorControls {
         // middle it overrides the intake and windmill buttons.
         stick = -g.right_stick_y;
         stickActive = Math.abs(stick) > Constants.Intake.STICK_DEADZONE;
-        runWindmill = !stickActive && (windmillOn || (shooting && windmillStarted));
+        runWindmill = !stickActive && (windmillOn || (shooting && windmillStarted && !recovering));
         runIntake = !stickActive && (intakeOn || g.right_bumper);
         if (stickActive) {
             robot.intake.set(stick > 0 ? stick * Constants.Intake.IN_POWER : -stick * Constants.Intake.OUT_POWER);
@@ -130,7 +146,7 @@ public class OperatorControls {
             t.addLine("Speeds fixed (same launcher speed as Auto Compete)");
         }
         t.addData("Windmill", "%s   speed %.2f", stickActive ? "on the right stick" : runWindmill ? "TURNING"
-                : (shooting ? "waiting for launcher" : "stopped"), robot.windmill.getFeedSpeed());
+                : (shooting ? (recovering ? "paused, wheel recovering" : "waiting for launcher") : "stopped"), robot.windmill.getFeedSpeed());
         boolean windmillForward = runWindmill || (stickActive && stick > 0);
         if (windmillForward && !runLauncher) t.addLine("Careful: windmill feeding with the launcher off");
     }

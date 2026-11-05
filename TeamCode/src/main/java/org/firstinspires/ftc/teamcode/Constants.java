@@ -298,6 +298,12 @@ public final class Constants {
          * starts anyway after this long (e.g. if the speed preset is too high to reach).
          */
         public static final double SHOOT_MAX_WAIT_S = 2.0;
+        /**
+         * While shooting, pause the windmill when the wheel dips this far below target (a ball
+         * just went through) until it is back within Launcher.READY_TOLERANCE_TPS, so the next
+         * ball never goes in on a slowed wheel and falls short. Used by TeleOp and Auto Compete.
+         */
+        public static final double PAUSE_DIP_TPS = 100;
     }
 
     // =========================================================================================
@@ -496,7 +502,7 @@ public final class Constants {
          * 2026-11-04: replaced single 280 ms quarter turns, which fired only 2 of 4 balls.
          * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
          */
-        public static final double SHOT_DIP_TPS = 100;
+        public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
         public static final double FEED_MAX_S = 8.0;
         /**
          * At the end, push gently sideways against our wall for this long, so the robot finishes
