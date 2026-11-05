@@ -216,10 +216,10 @@ public final class Constants {
          * Speed presets in encoder ticks per second, picked with the operator's D-pad.
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
          * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
-         * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs.
+         * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs, then 1310 (-15).
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1325, 2300 };
+        public static final double[] PRESETS_TPS = { 1310, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
 
         /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
@@ -468,23 +468,28 @@ public final class Constants {
         public static final double[] SHOOT_POSE = { 47, 9, -90 };
         /**
          * The way to the Loading Zone, {x, y} in order (each leg still checked against the map):
-         * along the right-hand wall toward our wall, then along our wall 3 in clear of the flower
-         * on it (keep-out ends at x 21), then in against our wall once past the flower (y > 64).
-         * 2026-11-04: added after a run that cut diagonally, bumped near the hive frame and parked
-         * just outside the zone. Following the walls is easier to repeat.
+         *  1. along the right-hand wall to the corner by our wall;
+         *  2. straight along our wall (the team's "96 in" run) with the robot's side 12 in off the
+         *     wall, which clears the 10 in flower on it by 2 in;
+         *  3. in against our wall at the Loading Zone.
          */
-        public static final double[][] PARK_VIA = { { 22, 12 }, { 22, 66 }, { 10, 80 } };
+        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 108 } };
         /**
-         * Where to park: 1 in off our wall, in the middle of the Loading Zone (y 96-119), so the
-         * whole robot is inside even if odometry is a few inches off. Same heading: no turning.
+         * Where to park ("2" on the team's sketch): 1 in off our wall, in the middle of the Loading
+         * Zone (y 96-119), so the whole robot is inside even if odometry is a few inches off.
          */
         public static final double[] PARK_POSE = { 10, 108, -90 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */
         public static final int SHOOT_PRESET = 0;
-        /** Stop feeding this long after the windmill starts, even if not every shot was counted. */
-        public static final double FEED_MAX_S = 5.0;
+        /**
+         * Shooting: one windmill quarter turn (one ball) at a time, and the next only once the wheel
+         * is back at full speed, so no ball goes in on a slowed wheel and just drops. One extra
+         * turn in case a ball did not go on its turn. Stop after FEED_MAX_S whatever happens.
+         */
+        public static final int EXTRA_FEED_STEPS = 1;
+        public static final double FEED_MAX_S = 8.0;
 
         /** AUTO is 30 s. */
         public static final double AUTO_LENGTH_S = 30.0;
