@@ -221,6 +221,12 @@ public final class Constants {
          */
         public static final double[] PRESETS_TPS = { 1310, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
+        /**
+         * Can the operator change speeds in TeleOp (D-pad up/down launcher, circle = other preset,
+         * D-pad right/left windmill)? 2026-11-04: OFF. TeleOp shoots at the NEAR preset, the same
+         * speed as Auto Compete, and the windmill at FEED_SPEED. Set true to tune again.
+         */
+        public static final boolean OPERATOR_SPEED_CHANGES = false;
 
         /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
         public static final double STEP_TPS = 80;

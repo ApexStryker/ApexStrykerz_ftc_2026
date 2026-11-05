@@ -30,28 +30,15 @@ public class FieldMap {
     }
 
     /** The BIOBUZZ field for AUTO: our side only, walls, hive frame and flowers from Constants.Field. */
-    public static FieldMap compete() { return compete(false); }
-
-    /**
-     * The same, mirrored left-right (y -> 144 - y) when mirrored is true: for starting in the
-     * mirror slot on the left-hand wall ("Auto Compete Left").
-     */
-    public static FieldMap compete(boolean mirrored) {
+    public static FieldMap compete() {
         double half = Constants.Field.ROBOT_HALF_IN, grow = half + Constants.Field.CLEARANCE_IN;
         FieldMap map = new FieldMap(half, Constants.Field.OUR_SIDE_MAX_X - half,
                 half, Constants.Auto.ARENA_SIZE_IN - half, Constants.Field.GRID_IN);
         for (int i = 0; i < Constants.Field.OBSTACLES.length; i++) {
-            double[] b = forSlot(Constants.Field.OBSTACLES[i], mirrored);
+            double[] b = Constants.Field.OBSTACLES[i];
             map.addObstacle(Constants.Field.OBSTACLE_NAMES[i], b[0] - grow, b[1] - grow, b[2] + grow, b[3] + grow);
         }
         return map;
-    }
-
-    /** A box {x1, y1, x2, y2} as is, or mirrored left-right (y -> 144 - y). */
-    public static double[] forSlot(double[] box, boolean mirrored) {
-        if (!mirrored) return box.clone();
-        double size = Constants.Auto.ARENA_SIZE_IN;
-        return new double[] { box[0], size - box[3], box[2], size - box[1] };
     }
 
     /** A box the robot's centre must stay out of (already grown by the robot's size). */
