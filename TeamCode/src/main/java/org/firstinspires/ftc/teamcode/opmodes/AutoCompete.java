@@ -21,9 +21,9 @@ import java.util.List;
 /**
  * The match autonomous: shoot the 4 preloads into our hive, then PARK in our Loading Zone.
  *
- *  1. START at Constants.Compete.START_POSE: launcher side against our wall, facing the hive.
+ *  1. START at Constants.Compete.START_POSE: intake against a wall, launcher facing the hive.
  *  2. Drive to SHOOT_POSE if it is somewhere else (the same = shoot without moving).
- *  3. Spin up, feed with the windmill once at speed, count the shots by the speed dips.
+ *  3. Spin up; the windmill feeds while the wheel is at full speed and pauses after each shot.
  *  4. Drive to PARK_POSE in the Loading Zone, around the hive frame and flowers (util/FieldMap).
  *
  * Time: leaves for the Loading Zone no later than PARK_RESERVE_S before the end of AUTO, or
@@ -31,8 +31,12 @@ import java.util.List;
  * Bumps: if the robot stops getting closer (a robot or something else in the way), it backs off,
  * steps sideways, plans again and retries, up to MAX_RETRIES times.
  *
- * Everything is in ARENA coordinates; the field looks the same for red and blue, so there is
- * nothing to mirror. Only appears on the Driver Station when Constants.USE_PINPOINT is true.
+ * Both start slots use this one mode. The second slot is the same setup turned half a turn
+ * around the field (the opposite side wall, parking along the far wall); everything is relative
+ * to where the robot starts, so the robot makes exactly the same moves from there.
+ * (2026-11-04: a left-right mirrored "Left" mode was tried and removed; the field is not mirrored.)
+ * Everything is in ARENA coordinates. Only appears on the Driver Station when
+ * Constants.USE_PINPOINT is true.
  */
 public class AutoCompete extends LinearOpMode {
 
@@ -71,7 +75,8 @@ public class AutoCompete extends LinearOpMode {
         while (opModeInInit()) {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
-            telemetry.addData("Start", "%.0f, %.0f, %.0f°  (launcher to the hive, intake to our wall)", start[0], start[1], start[2]);
+            telemetry.addLine("Either slot: intake against the side wall, launcher facing the hive");
+            telemetry.addData("Start", "%.0f, %.0f, %.0f°", start[0], start[1], start[2]);
             telemetry.addData("Plan", "shoot %d at %.0f, %.0f, then park at %.0f, %.0f",
                     Constants.Compete.PRELOADS, shoot[0], shoot[1], park[0], park[1]);
             telemetry.addLine(problems.isEmpty() ? "Map check: OK" : "MAP CHECK: " + problems);
@@ -97,7 +102,14 @@ public class AutoCompete extends LinearOpMode {
         robot.launcher.stop();
 
         step = "to the Loading Zone";
-        Drive parked = driveTo(park, false);
+        Drive parked = Drive.ARRIVED;
+        for (double[] v : Constants.Compete.PARK_VIA) {
+            parked = driveTo(new double[] { v[0], v[1], park[2] }, false);
+            if (parked != Drive.ARRIVED) break;
+        }
+        if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
+        if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
+        if (parked == Drive.ARRIVED) squeezeAgainstWall();
         robot.stop();
         Pose2D p = robot.localizer.getPose();
         boolean inZone = touchesLoadingZone(p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
@@ -112,37 +124,50 @@ public class AutoCompete extends LinearOpMode {
 
     // ---- Shooting ------------------------------------------------------------------------------
 
-    /** Like holding the right trigger: windmill feeds once the launcher is at speed; stops at the leave time. */
+    /**
+     * The windmill turns only while the wheel is at full speed, and pauses as soon as a ball goes
+     * through (a dip of SHOT_DIP_TPS) until the wheel has recovered. If the wheel never gets up to
+     * speed in SHOOT_MAX_WAIT_S (low battery), feed anyway. Stops after PRELOADS shots, FEED_MAX_S,
+     * or the leave time.
+     */
     private void shoot() {
         step = "shooting";
-        ElapsedTime waiting = new ElapsedTime(), feeding = new ElapsedTime();
-        boolean feedingStarted = false, recovering = false;
-        while (opModeIsActive() && shots < Constants.Compete.PRELOADS && match.seconds() < leaveAt) {
+        ElapsedTime feeding = new ElapsedTime(), waiting = new ElapsedTime();
+        boolean started = false, inDip = false;
+        double lowest = Double.MAX_VALUE;
+        while (opModeIsActive() && match.seconds() < leaveAt && shots < Constants.Compete.PRELOADS) {
             robot.updateManual();
-            if (!feedingStarted && (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S)) {
-                feedingStarted = true;
-                feeding.reset();
-                robot.launcher.armShot();
-                Debug.log("compete: feeding at %.0f tps", robot.launcher.getVelocityTps());
-            }
-            if (feedingStarted) {
-                if (feeding.seconds() > Constants.Compete.FEED_MAX_S) break;
-                robot.windmill.run();
-                if (robot.launcher.takeShot()) {
-                    shots++;
-                    recovering = true;
-                    Debug.log("compete: shot %d at %.1f s", shots, match.seconds());
+            double v = robot.launcher.getVelocityTps(), target = robot.launcher.getTargetTps();
+            boolean ready = v >= target - Constants.Launcher.READY_TOLERANCE_TPS;
+            if (!started) {
+                if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
+                    started = true;
+                    feeding.reset();
+                    Debug.log("compete: feeding at %.0f tps", v);
                 }
-                // Count the next dip only once the wheel is back up to speed.
-                if (recovering && robot.launcher.getVelocityTps()
-                        >= robot.launcher.getTargetTps() - Constants.Launcher.READY_TOLERANCE_TPS) {
-                    recovering = false;
-                    robot.launcher.armShot();
+            } else {
+                if (feeding.seconds() > Constants.Compete.FEED_MAX_S) {
+                    Debug.warn("compete: feeding time up after %d shots", shots);
+                    break;
                 }
+                if (!inDip && v < target - Constants.Compete.SHOT_DIP_TPS) {
+                    inDip = true;               // a ball went through: pause until the wheel recovers
+                    lowest = v;
+                    waiting.reset();
+                } else if (inDip) {
+                    lowest = Math.min(lowest, v);
+                    if (ready || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
+                        inDip = false;
+                        shots++;
+                        Debug.log("compete: shot %d at %.1f s, wheel dipped to %.0f tps", shots, match.seconds(), lowest);
+                    }
+                }
+                if (inDip) robot.windmill.hold();
+                else robot.windmill.run();
             }
-            show("%d of %d shots, launcher %.0f / %.0f tps", shots, Constants.Compete.PRELOADS,
-                    robot.launcher.getVelocityTps(), robot.launcher.getTargetTps());
+            show("%d of %d shots, launcher %.0f / %.0f tps", shots, Constants.Compete.PRELOADS, v, robot.launcher.getTargetTps());
         }
+        robot.windmill.hold();
         if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d shots", shots);
     }
 
@@ -150,9 +175,14 @@ public class AutoCompete extends LinearOpMode {
     private void planLeaveTime(double[] park) {
         Pose2D p = robot.localizer.getPose();
         double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
-        List<double[]> route = map.route(x, y, park[0], park[1]);
-        double tripS = route == null ? 0 : FieldMap.length(x, y, route) / Constants.Compete.PARK_SPEED_IN_PER_S
-                + Constants.Compete.PARK_MARGIN_S;
+        double len = 0;
+        for (double[] v : parkLegs(park)) {
+            List<double[]> route = map.route(x, y, v[0], v[1]);
+            if (route != null) len += FieldMap.length(x, y, route);
+            x = v[0];
+            y = v[1];
+        }
+        double tripS = len / Constants.Compete.PARK_SPEED_IN_PER_S + Constants.Compete.PARK_MARGIN_S;
         leaveAt = Constants.Compete.AUTO_LENGTH_S - Math.max(Constants.Compete.PARK_RESERVE_S, tripS);
         Debug.log("compete: park trip about %.1f s, leave by %.1f s", tripS, leaveAt);
     }
@@ -261,6 +291,21 @@ public class AutoCompete extends LinearOpMode {
         follower.abort();
     }
 
+    /** Push gently toward our wall (field -x) for a moment, so the robot ends flat against it. */
+    private void squeezeAgainstWall() {
+        step = "against the wall";
+        ElapsedTime t = new ElapsedTime();
+        while (opModeIsActive() && t.seconds() < Constants.Compete.WALL_SQUEEZE_S) {
+            robot.updateManual();
+            double h = robot.localizer.getPose().getHeading(AngleUnit.RADIANS);
+            robot.drive.driveFieldCentric(-Constants.Compete.WALL_SQUEEZE_POWER, 0, 0, h, 1.0);
+            show("pushing against our wall");
+        }
+        robot.drive.stop();
+        Pose2D p = robot.localizer.getPose();
+        Debug.log("compete: against the wall at %.1f, %.1f", p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
+    }
+
     // ---- Checks and telemetry ------------------------------------------------------------------
 
     /** Problems with the plan, for INIT; empty if none. */
@@ -275,9 +320,23 @@ public class AutoCompete extends LinearOpMode {
         if (!touchesLoadingZone(park[0], park[1])) s.append("park spot is not in the Loading Zone. ");
         if (s.length() == 0) {
             if (map.route(start[0], start[1], shoot[0], shoot[1]) == null) s.append("no route to the shooting spot. ");
-            if (map.route(shoot[0], shoot[1], park[0], park[1]) == null) s.append("no route to the Loading Zone. ");
+            double x = shoot[0], y = shoot[1];
+            for (double[] v : parkLegs(park)) {
+                if (map.blockedBy(v[0], v[1]) != null) { s.append("a park way point is too close to ").append(map.blockedBy(v[0], v[1])).append(". "); break; }
+                if (map.route(x, y, v[0], v[1]) == null) { s.append("no route to the Loading Zone. "); break; }
+                x = v[0];
+                y = v[1];
+            }
         }
         return s.toString().trim();
+    }
+
+    /** The way points to the Loading Zone, then the park spot itself. */
+    static List<double[]> parkLegs(double[] park) {
+        List<double[]> legs = new ArrayList<>();
+        for (double[] v : Constants.Compete.PARK_VIA) legs.add(v);
+        legs.add(park);
+        return legs;
     }
 
     /** True if an 18 in robot centred at (x, y) is at least partly in our Loading Zone (AUTO PARK). */

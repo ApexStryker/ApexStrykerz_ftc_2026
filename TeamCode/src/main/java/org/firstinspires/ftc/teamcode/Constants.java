@@ -216,17 +216,27 @@ public final class Constants {
          * Speed presets in encoder ticks per second, picked with the operator's D-pad.
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
          * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
+         * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs, then 1310 (-15).
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1250, 2300 };
+        public static final double[] PRESETS_TPS = { 1310, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
+        /**
+         * Can the operator change speeds in TeleOp (D-pad up/down launcher, circle = other preset,
+         * D-pad right/left windmill)? 2026-11-04: OFF. TeleOp shoots at the NEAR preset, the same
+         * speed as Auto Compete, and the windmill at FEED_SPEED. Set true to tune again.
+         */
+        public static final boolean OPERATOR_SPEED_CHANGES = false;
 
         /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
         public static final double STEP_TPS = 80;
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 
-        /** Ready when within this many tps of target... */
+        /**
+         * Ready when within this many tps of target... TODO(next session): once our loop holds the
+         * speed steadily, tighten to about 25 so every ball leaves at nearly the same speed.
+         */
         public static final double READY_TOLERANCE_TPS = 60;
         /** ...continuously for this long. */
         public static final double READY_HOLD_MS = 120;
@@ -235,7 +245,35 @@ public final class Constants {
         /** Give up waiting for a shot this long after a feed (empty windmill pocket). */
         public static final double SHOT_TIMEOUT_MS = 700;
 
-        /** Custom velocity PIDF. false = SDK defaults. Tune with Launcher Tuner. */
+        /**
+         * true = our own speed loop in hardware/Launcher (battery-corrected base power, correction
+         * toward the target, full-power boost after each ball). false = the hub's built-in velocity
+         * PIDF below, as before 2026-11-04 (that one swung about 1220-1380 around 1310).
+         */
+        public static final boolean OWN_SPEED_LOOP = true;
+        /**
+         * Our loop's gains. Power = (KS + KV x target) x NOMINAL_VOLTS / battery + KP x error + KI x
+         * (sum of error x seconds), with error = target - actual in tps.
+         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. Starting value from
+         * the 2026-10-12 note (about 1320 tps at 50% power): KV ≈ 0.5 / 1320. TODO(next session):
+         * run "Calibrate" in Launcher Tuner (triangle) and copy the KV and KS it logs here.
+         * KP, KI: TODO(next session): tune in Launcher Tuner, watching the speed hold steady and
+         * recover quickly after each ball.
+         */
+        public static final double KV = 0.00038, KS = 0.0;
+        public static final double KP = 0.002, KI = 0.002;
+        /** The most the KI term may add or remove, as motor power (stops wind-up). */
+        public static final double I_LIMIT = 0.1;
+        /** Full power while the wheel is more than this slow (right after a ball), to recover fast. */
+        public static final double BOOST_BELOW_TPS = 80;
+        /** The battery voltage KV and KS are measured at; base power scales by NOMINAL / battery. */
+        public static final double NOMINAL_VOLTS = 12.0;
+        /** Read the battery this often (a reading costs a few ms). */
+        public static final double VOLTS_READ_MS = 100;
+        /** Launcher Tuner calibration: the two fixed powers, and how long to run each. */
+        public static final double CAL_POWER_LOW = 0.35, CAL_POWER_HIGH = 0.65, CAL_STEP_S = 2.5;
+
+        /** The hub's velocity PIDF, only when OWN_SPEED_LOOP is false. false = SDK defaults. */
         public static final boolean USE_CUSTOM_PIDF = false;
         public static final double P = 10, I = 3, D = 0, F = 12;
 
@@ -291,6 +329,12 @@ public final class Constants {
          * starts anyway after this long (e.g. if the speed preset is too high to reach).
          */
         public static final double SHOOT_MAX_WAIT_S = 2.0;
+        /**
+         * While shooting, pause the windmill when the wheel dips this far below target (a ball
+         * just went through) until it is back within Launcher.READY_TOLERANCE_TPS, so the next
+         * ball never goes in on a slowed wheel and falls short. Used by TeleOp and Auto Compete.
+         */
+        public static final double PAUSE_DIP_TPS = 100;
     }
 
     // =========================================================================================
@@ -430,15 +474,17 @@ public final class Constants {
         /**
          * Hive frame: the A-shaped side on our half stands on a floor bar at x ≈ 47.3 (49.46 in
          * frame, centred), y 52.5 to 91.5 (38.95 in deep). The hives hang 30.6 in up, out of reach.
+         * 2026-11-04: the robot bumped a leg with its edge near x 43, so the legs' feet are wider
+         * than the bar: keep out x 42 to 53.
          * Flowers: about 10 in across, on our wall at y ≈ 48 and on the left wall at x ≈ 48.
          */
         public static final double[][] OBSTACLES = {
-                { 46.3, 52.5, 48.3, 91.5 },
+                { 42, 52.5, 53, 91.5 },
                 { 0, 43, 10, 53 },
                 { 43, 134, 53, 144 },
         };
         public static final String[] OBSTACLE_NAMES = { "hive frame", "flower on our wall", "flower on the left wall" };
-        /** Our LOADING ZONE: AUTO PARK = the robot at least partly inside it at the end of AUTO. */
+        /** Our LOADING ZONE (manual Figure 9-2): AUTO PARK = the robot at least partly inside it. */
         public static final double[] LOADING_ZONE = { 0, 96, 11, 119 };
         /** Route planning grid, inches. */
         public static final double GRID_IN = 2.0;
@@ -454,21 +500,47 @@ public final class Constants {
         private Compete() {}
 
         /**
-         * Start: launcher side against our wall, centred on the hive (y 72), as the team shot in
-         * practice. Legal per G304: touching our wall, our side, not in the Loading Zone, clear
-         * of the flower. TODO: measure the robot centre on the real start spot.
+         * Start: against the RIGHT-HAND side wall (y = 0), intake to the wall (heading -90°), the
+         * launcher facing along the wall's normal straight at our hive, in line with the hive frame
+         * (x ≈ 47 from our wall). Legal per G304: touching a wall, our side, not in the Loading
+         * Zone, clear of the flowers. TODO: measure how far the robot centre is from our wall.
+         * (2026-11-04: first set to our wall at (9, 72, 180°); the team actually starts here.)
          */
-        public static final double[] START_POSE = { 9, 72, 180 };
+        public static final double[] START_POSE = { 47, 9, -90 };
         /** Where to shoot from. The same as START_POSE = shoot without moving. */
-        public static final double[] SHOOT_POSE = { 9, 72, 180 };
-        /** Where to park: well inside the Loading Zone (only partly inside is needed). */
-        public static final double[] PARK_POSE = { 12, 108, 180 };
+        public static final double[] SHOOT_POSE = { 47, 9, -90 };
+        /**
+         * The way to the Loading Zone, {x, y} in order (each leg still checked against the map):
+         *  1. along the right-hand wall to the corner by our wall;
+         *  2. straight along our wall (the team's "96 in" run) with the robot's side 12 in off the
+         *     wall, which clears the 10 in flower on it by 2 in;
+         *  3. in against our wall at the Loading Zone.
+         */
+        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 108 } };
+        /**
+         * Where to park ("2" on the team's sketch): 1 in off our wall, in the middle of the Loading
+         * Zone (y 96-119), so the whole robot is inside even if odometry is a few inches off.
+         */
+        public static final double[] PARK_POSE = { 10, 108, -90 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */
         public static final int SHOOT_PRESET = 0;
-        /** Stop feeding this long after the windmill starts, even if not every shot was counted. */
-        public static final double FEED_MAX_S = 5.0;
+        /**
+         * Shooting: the windmill turns while the wheel is at full speed and pauses the moment a ball
+         * goes through (the wheel dips SHOT_DIP_TPS below target), until the wheel is back within
+         * READY_TOLERANCE_TPS. So every ball meets a full-speed wheel and none is skipped.
+         * 2026-11-04: replaced single 280 ms quarter turns, which fired only 2 of 4 balls.
+         * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
+         */
+        public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
+        public static final double FEED_MAX_S = 8.0;
+        /**
+         * At the end, push gently sideways against our wall for this long, so the robot finishes
+         * flat against it (odometry alone left it a few inches off).
+         */
+        public static final double WALL_SQUEEZE_POWER = 0.35;
+        public static final double WALL_SQUEEZE_S = 0.8;
 
         /** AUTO is 30 s. */
         public static final double AUTO_LENGTH_S = 30.0;
