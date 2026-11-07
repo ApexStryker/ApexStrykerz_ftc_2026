@@ -94,7 +94,7 @@ public class OperatorControls {
             if (!recovering && v < target - Constants.Windmill.PAUSE_DIP_TPS) {
                 recovering = true;
                 recoverTimer.reset();
-            } else if (recovering && (v >= target - Constants.Launcher.READY_TOLERANCE_TPS
+            } else if (recovering && (robot.launcher.atSpeed()   // settled, not still overshooting
                     || recoverTimer.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S)) {
                 recovering = false;
             }

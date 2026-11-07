@@ -139,7 +139,6 @@ public class AutoCompete extends LinearOpMode {
         while (opModeIsActive() && match.seconds() < leaveAt && shots < Constants.Compete.PRELOADS) {
             robot.updateManual();
             double v = robot.launcher.getVelocityTps(), target = robot.launcher.getTargetTps();
-            boolean ready = v >= target - Constants.Launcher.READY_TOLERANCE_TPS;
             if (!started) {
                 if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
                     started = true;
@@ -157,7 +156,10 @@ public class AutoCompete extends LinearOpMode {
                     waiting.reset();
                 } else if (inDip) {
                     lowest = Math.min(lowest, v);
-                    if (ready || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
+                    // Back to speed = settled within READY_TOLERANCE on both sides for READY_HOLD_MS,
+                    // not just past target - tolerance on the way up: right after a ball the wheel
+                    // runs about 50 tps fast for 0.3 s, and a ball fed then flies long (2026-11-07).
+                    if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
                         inDip = false;
                         shots++;
                         Debug.log("compete: shot %d at %.1f s, wheel dipped to %.0f tps", shots, match.seconds(), lowest);
