@@ -100,6 +100,7 @@ public class AutoCompete extends LinearOpMode {
         if (opModeIsActive() && match.seconds() < leaveAt) shoot();
         robot.windmill.hold();
         robot.launcher.stop();
+        checkPoseBeforeParking(shoot);
 
         step = "to the Loading Zone";
         Drive parked = Drive.ARRIVED;
@@ -169,6 +170,22 @@ public class AutoCompete extends LinearOpMode {
         }
         robot.windmill.hold();
         if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d shots", shots);
+    }
+
+    /**
+     * The robot stood still while shooting, so it must still be at the shooting spot. If the
+     * position says otherwise (Pinpoint reset or slipped), trust the shooting spot instead.
+     */
+    private void checkPoseBeforeParking(double[] shoot) {
+        robot.updateManual();
+        Pose2D p = robot.localizer.getPose();
+        double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
+        double off = Math.hypot(x - shoot[0], y - shoot[1]);
+        if (off > Constants.Compete.POSE_CHECK_IN) {
+            Debug.warn("compete: position %.0f, %.0f is %.0f in from the shooting spot, reset to %.0f, %.0f",
+                    x, y, off, shoot[0], shoot[1]);
+            robot.setPose(shoot[0], shoot[1], shoot[2]);
+        }
     }
 
     /** Leave for the Loading Zone at PARK_RESERVE_S before the end, or earlier if the trip is long. */

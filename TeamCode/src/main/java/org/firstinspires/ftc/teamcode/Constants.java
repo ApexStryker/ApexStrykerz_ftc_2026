@@ -151,6 +151,15 @@ public final class Constants {
 
         /** Drive-encoder pose is not trusted after this much travel since the last setPose. */
         public static final double MAX_TRUSTED_PATH_IN = 144.0;
+        /**
+         * The Pinpoint zeroes its position when it finishes the reset it does at every OpMode
+         * start (about 0.25 s). A start pose set before then is wiped: 2026-11-07, START was
+         * pressed 0.5 s after INIT and Auto Compete thought it was in the corner (0, 0) and did
+         * not drive. setPose waits until the reset is this old and the Pinpoint is READY...
+         */
+        public static final double PINPOINT_RESET_SETTLE_MS = 400;
+        /** ...but never longer than this, and setPose checks the position took. */
+        public static final double PINPOINT_READY_WAIT_MS = 1500;
 
         // ---- goBILDA Pinpoint (arrived 2026-10-19; see the Pinpoint slides in the deck) ----
         /**
@@ -542,6 +551,12 @@ public final class Constants {
          */
         public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
         public static final double FEED_MAX_S = 8.0;
+        /**
+         * The robot does not drive while shooting, so before parking its position should still be
+         * the shooting spot. Further off than this (the Pinpoint was reset or slipped): log it and
+         * put it back to the shooting spot.
+         */
+        public static final double POSE_CHECK_IN = 6.0;
         /**
          * At the end, push gently sideways against our wall for this long, so the robot finishes
          * flat against it (odometry alone left it a few inches off).
