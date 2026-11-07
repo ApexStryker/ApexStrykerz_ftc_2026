@@ -21,8 +21,8 @@ import org.firstinspires.ftc.teamcode.util.Debug;
  *                         pausing after each ball until the wheel is back to speed
  *   LEFT TRIGGER          launcher on / off
  *   LEFT BUMPER           windmill on / off
- *   D-pad UP / DOWN       launcher speed +80 / -80 tps          } all three OFF while
- *   D-pad RIGHT / LEFT    windmill speed +0.05 / -0.05          } Constants.Launcher.
+ *   D-pad UP / DOWN       launcher speed +25 / -25 tps (Constants.Launcher.OPERATOR_DPAD_SPEED)
+ *   D-pad RIGHT / LEFT    windmill speed +0.05 / -0.05          } both OFF while Constants.Launcher.
  *   CIRCLE (B)            jump to the other speed preset         } OPERATOR_SPEED_CHANGES is false
  *
  * Short rumble = launcher at speed. Hub lights: green ready, yellow spinning up, blue idle.
@@ -56,16 +56,17 @@ public class OperatorControls {
         if (g.left_trigger > 0.5 && prev.left_trigger <= 0.5) launcherOn = !launcherOn;
         if (g.left_bumper && !prev.left_bumper) windmillOn = !windmillOn;
 
-        // Launcher speed: circle jumps between the presets, the D-pad nudges from there.
-        // Off for competition (OPERATOR_SPEED_CHANGES): the speeds stay as set in Constants.
+        // Launcher speed: starts at the NEAR preset (same as Auto Compete); D-pad up/down nudges it
+        // (OPERATOR_DPAD_SPEED). Circle and the windmill speed stay fixed (OPERATOR_SPEED_CHANGES).
         boolean adjust = Constants.Launcher.OPERATOR_SPEED_CHANGES;
+        boolean dpadSpeed = Constants.Launcher.OPERATOR_DPAD_SPEED;
         if (adjust && g.circle && !prev.circle) {
             robot.launcher.selectPreset((robot.launcher.getPresetIndex() + 1) % Constants.Launcher.PRESETS_TPS.length);
             Debug.log("operator: launcher preset %s, %.0f tps", robot.launcher.getPresetName(), robot.launcher.getTargetTps());
         }
         double step = 0;
-        if (adjust && g.dpad_up && !prev.dpad_up) step = Constants.Launcher.STEP_TPS;
-        if (adjust && g.dpad_down && !prev.dpad_down) step = -Constants.Launcher.STEP_TPS;
+        if (dpadSpeed && g.dpad_up && !prev.dpad_up) step = Constants.Launcher.STEP_TPS;
+        if (dpadSpeed && g.dpad_down && !prev.dpad_down) step = -Constants.Launcher.STEP_TPS;
         if (step != 0) {
             robot.launcher.setTargetTps(Range.clip(robot.launcher.getTargetTps() + step, 0, Constants.Launcher.MAX_TPS));
             Debug.log("operator: launcher target %.0f tps", robot.launcher.getTargetTps());
@@ -142,6 +143,9 @@ public class OperatorControls {
         if (Constants.Launcher.OPERATOR_SPEED_CHANGES) {
             t.addData("Adjust", "D-pad up/down launcher %.0f, right/left windmill %.2f, circle = %s preset",
                     Constants.Launcher.STEP_TPS, Constants.Windmill.SPEED_STEP, next);
+        } else if (Constants.Launcher.OPERATOR_DPAD_SPEED) {
+            t.addData("Adjust", "D-pad up/down launcher +/-%.0f (starts at %.0f, same as Auto Compete)",
+                    Constants.Launcher.STEP_TPS, Constants.Launcher.PRESETS_TPS[0]);
         } else {
             t.addLine("Speeds fixed (same launcher speed as Auto Compete)");
         }

@@ -217,27 +217,34 @@ public final class Constants {
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
          * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
          * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs, then 1310 (-15).
+         * 2026-11-07: NEAR 1295, picked in Launcher Tuner with our own speed loop (the wheel now
+         * really holds the set speed; the old hub control swung about 1220-1380 around 1310).
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1310, 2300 };
+        public static final double[] PRESETS_TPS = { 1295, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
         /**
-         * Can the operator change speeds in TeleOp (D-pad up/down launcher, circle = other preset,
-         * D-pad right/left windmill)? 2026-11-04: OFF. TeleOp shoots at the NEAR preset, the same
-         * speed as Auto Compete, and the windmill at FEED_SPEED. Set true to tune again.
+         * TeleOp: can the operator nudge the launcher speed with D-pad up / down (STEP_TPS a press)?
+         * 2026-11-07: ON. TeleOp starts at the NEAR preset, the same speed as Auto Compete.
+         */
+        public static final boolean OPERATOR_DPAD_SPEED = true;
+        /**
+         * TeleOp: circle = other preset, D-pad right/left = windmill speed. 2026-11-04: OFF, the
+         * windmill stays at FEED_SPEED. Set true to tune again.
          */
         public static final boolean OPERATOR_SPEED_CHANGES = false;
 
-        /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
-        public static final double STEP_TPS = 80;
+        /** Operator D-pad up / down: launcher speed step (100 until 2026-11-02, 80 until 2026-11-07). */
+        public static final double STEP_TPS = 25;
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 
         /**
-         * Ready when within this many tps of target... TODO(next session): once our loop holds the
-         * speed steadily, tighten to about 25 so every ball leaves at nearly the same speed.
+         * Ready when within this many tps of target... 60 until 2026-11-07; 30 now that our loop
+         * holds the speed (readings come in steps of 20, so tighter would flicker), so the next
+         * ball waits out the short overshoot after each shot.
          */
-        public static final double READY_TOLERANCE_TPS = 60;
+        public static final double READY_TOLERANCE_TPS = 30;
         /** ...continuously for this long. */
         public static final double READY_HOLD_MS = 120;
         /** A shot is detected when speed dips this far below target after a feed. */
@@ -254,13 +261,13 @@ public final class Constants {
         /**
          * Our loop's gains. Power = (KS + KV x target) x NOMINAL_VOLTS / battery + KP x error + KI x
          * (sum of error x seconds), with error = target - actual in tps.
-         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. Starting value from
-         * the 2026-10-12 note (about 1320 tps at 50% power): KV ≈ 0.5 / 1320. TODO(next session):
-         * run "Calibrate" in Launcher Tuner (triangle) and copy the KV and KS it logs here.
-         * KP, KI: TODO(next session): tune in Launcher Tuner, watching the speed hold steady and
-         * recover quickly after each ball.
+         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. 2026-11-07: from
+         * Launcher Tuner "Calibrate" (874 tps at 0.35 power, 1666 tps at 0.65, battery 12.7 V).
+         * KP, KI: 2026-11-07, checked in Launcher Tuner: holds within one encoder reading (+/-10
+         * tps) of target, back to speed about 0.1-0.2 s after each ball, about +50 overshoot
+         * for 0.3 s after.
          */
-        public static final double KV = 0.00038, KS = 0.0;
+        public static final double KV = 0.000398, KS = 0.0232;
         public static final double KP = 0.002, KI = 0.002;
         /** The most the KI term may add or remove, as motor power (stops wind-up). */
         public static final double I_LIMIT = 0.1;
