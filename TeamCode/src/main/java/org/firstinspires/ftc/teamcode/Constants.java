@@ -234,8 +234,8 @@ public final class Constants {
          */
         public static final boolean OPERATOR_SPEED_CHANGES = false;
 
-        /** Operator D-pad up / down: launcher speed step (100 until 2026-11-02, 80 until 2026-11-07). */
-        public static final double STEP_TPS = 25;
+        /** Operator D-pad up / down: launcher speed step (100 until 2026-11-02, 80 until 2026-11-07, then 25). */
+        public static final double STEP_TPS = 10;
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 

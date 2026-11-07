@@ -21,7 +21,7 @@ import org.firstinspires.ftc.teamcode.util.Debug;
  *                         pausing after each ball until the wheel is back to speed
  *   LEFT TRIGGER          launcher on / off
  *   LEFT BUMPER           windmill on / off
- *   D-pad UP / DOWN       launcher speed +25 / -25 tps (Constants.Launcher.OPERATOR_DPAD_SPEED)
+ *   D-pad UP / DOWN       launcher speed +10 / -10 tps (Constants.Launcher.OPERATOR_DPAD_SPEED)
  *   D-pad RIGHT / LEFT    windmill speed +0.05 / -0.05          } both OFF while Constants.Launcher.
  *   CIRCLE (B)            jump to the other speed preset         } OPERATOR_SPEED_CHANGES is false
  *
