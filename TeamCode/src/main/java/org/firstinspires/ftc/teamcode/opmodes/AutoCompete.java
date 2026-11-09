@@ -104,9 +104,14 @@ public class AutoCompete extends LinearOpMode {
 
         step = "to the Loading Zone";
         Drive parked = Drive.ARRIVED;
-        for (double[] v : Constants.Compete.PARK_VIA) {
-            parked = driveTo(new double[] { v[0], v[1], park[2] }, false);
+        double[][] via = Constants.Compete.PARK_VIA;
+        for (double[] v : via) {
+            parked = driveTo(new double[] { v[0], v[1], Constants.Compete.PARK_TRAVEL_HEADING }, false);
             if (parked != Drive.ARRIVED) break;
+        }
+        if (parked == Drive.ARRIVED && via.length > 0) {   // turn on the spot, away from the walls
+            double[] last = via[via.length - 1];
+            parked = driveTo(new double[] { last[0], last[1], park[2] }, false);
         }
         if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
         if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);

@@ -530,14 +530,22 @@ public final class Constants {
          *  1. along the right-hand wall to the corner by our wall;
          *  2. straight along our wall (the team's "96 in" run) with the robot's side 12 in off the
          *     wall, which clears the 10 in flower on it by 2 in;
-         *  3. in against our wall at the Loading Zone.
+         *  3. turn on the spot to PARK_POSE's heading (out here, clear of walls and flowers: a
+         *     turning 18 in robot reaches 12.7 in from its centre);
+         *  4. in against our wall at the Loading Zone.
+         * 2026-11-09: run end 108 -> 120 (one foot further along our wall, the team's request).
          */
-        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 108 } };
+        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 120 } };
+        /** Heading while driving the PARK_VIA legs: the same as shooting, so no turn near walls. */
+        public static final double PARK_TRAVEL_HEADING = -90;
         /**
-         * Where to park ("2" on the team's sketch): 1 in off our wall, in the middle of the Loading
-         * Zone (y 96-119), so the whole robot is inside even if odometry is a few inches off.
+         * Where to park ("2" on the team's sketch): 1 in off our wall.
+         * 2026-11-09: one foot further along the wall (y 108 -> 120) and facing the arena: heading 0
+         * = intake out toward the field, launcher (back) against our wall (was -90, side on).
+         * Our map's Loading Zone is y 96-119, so at y 120 the robot covers y 111-129 and only partly
+         * overlaps it; the team placed it from what they see on the field.
          */
-        public static final double[] PARK_POSE = { 10, 108, -90 };
+        public static final double[] PARK_POSE = { 10, 120, 0 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */
