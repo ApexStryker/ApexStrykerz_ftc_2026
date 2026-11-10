@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeRegistrar;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -105,16 +106,25 @@ public class AutoCompete extends LinearOpMode {
         step = "to the Loading Zone";
         Drive parked = Drive.ARRIVED;
         double[][] via = Constants.Compete.PARK_VIA;
+        double travel = Constants.Compete.PARK_TRAVEL_HEADING;
         for (double[] v : via) {
-            parked = driveTo(new double[] { v[0], v[1], Constants.Compete.PARK_TRAVEL_HEADING }, false);
+            parked = driveTo(new double[] { v[0], v[1], travel }, false);
             if (parked != Drive.ARRIVED) break;
         }
-        if (parked == Drive.ARRIVED && via.length > 0) {   // turn on the spot, away from the walls
+        if (parked == Drive.BUMPED && via.length > 0) {
+            // Blocked on the way: let the planner find its own way to the end of the run, still
+            // at the travel heading (turning next to a wall or flower would clip it).
+            Debug.warn("compete: could not follow the walls, going straight for the end of the run");
             double[] last = via[via.length - 1];
-            parked = driveTo(new double[] { last[0], last[1], park[2] }, false);
+            parked = driveTo(new double[] { last[0], last[1], travel }, false);
         }
-        if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
-        if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
+        if (parked == Drive.ARRIVED) {
+            turnTo(park[2]);                      // out here, away from the walls
+            parked = driveTo(park, false);
+        } else if (parked == Drive.BUMPED) {
+            Debug.warn("compete: still blocked, into the zone without turning");
+            parked = driveTo(new double[] { park[0], park[1], travel }, false);
+        }
         if (parked == Drive.ARRIVED) squeezeAgainstWall();
         robot.stop();
         Pose2D p = robot.localizer.getPose();
@@ -327,6 +337,34 @@ public class AutoCompete extends LinearOpMode {
             show("%s: %.1f in to go", what, follower.distanceToGo());
         }
         follower.abort();
+    }
+
+    /**
+     * Turn on the spot to a heading, with our own simple loop: only the heading is controlled.
+     * The PathFollower is not used for this: the robot (or its position reading) drifts 4-6 in
+     * during a quarter turn, which it took for "stuck" or RUNAWAY (2026-11-09). The next driveTo
+     * takes out whatever drift there was.
+     */
+    private void turnTo(double headingDeg) {
+        step = "turning";
+        ElapsedTime t = new ElapsedTime();
+        double err = 0;
+        while (opModeIsActive() && t.seconds() < Constants.Auto.TURN_TIMEOUT_S) {
+            robot.updateManual();
+            if (!robot.localizer.isTrusted()) break;
+            double h = robot.localizer.getHeading();
+            err = AngleUnit.normalizeDegrees(headingDeg - Math.toDegrees(h));
+            if (Math.abs(err) < Constants.Auto.TURN_TOLERANCE_DEG) break;
+            double turn = Range.clip(Math.abs(err) * Constants.Auto.TURN_KP,
+                    Constants.Auto.PATH_MIN_TURN_POWER, Constants.Auto.TURN_MAX_POWER);
+            // Heading error positive = still to turn left (counter-clockwise) = negative yaw.
+            robot.drive.driveFieldCentric(0, 0, -Math.signum(err) * turn, h, 1.0);
+            show("turning to %.0f°: %.0f° to go", headingDeg, err);
+        }
+        robot.drive.stop();
+        Pose2D p = robot.localizer.getPose();
+        Debug.log("compete: turned to %.0f° in %.1f s (%.0f° off), now at %.1f, %.1f", headingDeg, t.seconds(), err,
+                p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
     }
 
     /** Push gently toward our wall (field -x) for a moment, so the robot ends flat against it. */
