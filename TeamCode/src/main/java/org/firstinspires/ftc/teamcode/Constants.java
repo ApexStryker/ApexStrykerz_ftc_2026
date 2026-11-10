@@ -561,7 +561,15 @@ public final class Constants {
          * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
          */
         public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
-        public static final double FEED_MAX_S = 8.0;
+        /** 8 until 2026-11-09: the last ball sometimes needed longer, and there is time to spare. */
+        public static final double FEED_MAX_S = 12.0;
+        /**
+         * While the windmill turns, the intake pushes gently (Intake.FEED_POWER), as Launcher Tuner
+         * does. 2026-11-09: without it the wheel ran 20-30 tps low for seconds at a time while
+         * feeding (a ball rubbing on it without going through) and the 3rd / 4th ball came late
+         * or never. false = windmill only, as before.
+         */
+        public static final boolean INTAKE_PUSH_WHILE_FEEDING = true;
         /**
          * The robot does not drive while shooting, so before parking its position should still be
          * the shooting spot. Further off than this (the Pinpoint was reset or slipped): log it and

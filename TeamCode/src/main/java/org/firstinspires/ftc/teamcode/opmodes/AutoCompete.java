@@ -170,12 +170,18 @@ public class AutoCompete extends LinearOpMode {
                         Debug.log("compete: shot %d at %.1f s, wheel dipped to %.0f tps", shots, match.seconds(), lowest);
                     }
                 }
-                if (inDip) robot.windmill.hold();
-                else robot.windmill.run();
+                if (inDip) {
+                    robot.windmill.hold();
+                    robot.intake.stop();
+                } else {
+                    robot.windmill.run();
+                    if (Constants.Compete.INTAKE_PUSH_WHILE_FEEDING) robot.intake.feed();
+                }
             }
             show("%d of %d shots, launcher %.0f / %.0f tps", shots, Constants.Compete.PRELOADS, v, robot.launcher.getTargetTps());
         }
         robot.windmill.hold();
+        robot.intake.stop();
         if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d shots", shots);
     }
 
@@ -259,11 +265,16 @@ public class AutoCompete extends LinearOpMode {
             double togo = follower.distanceToGo();
             if (Double.isNaN(windowDist)) windowDist = togo;
             if (window.seconds() >= Constants.Compete.STALL_WINDOW_S) {
-                if (driving && r == PathFollower.Result.RUNNING && togo > Constants.Compete.STALL_FAR_IN
-                        && windowDist - togo < Constants.Compete.STALL_MIN_IN) {
+                if (driving && r == PathFollower.Result.RUNNING && windowDist - togo < Constants.Compete.STALL_MIN_IN) {
                     follower.abort();
-                    Debug.warn("compete: stuck %.1f in from %.0f, %.0f", togo, x, y);
-                    return Drive.BUMPED;
+                    if (togo > Constants.Compete.STALL_FAR_IN) {
+                        Debug.warn("compete: stuck %.1f in from %.0f, %.0f", togo, x, y);
+                        return Drive.BUMPED;
+                    }
+                    // Not moving and nearly there (2026-11-09: backed into our wall 1.9 in short of
+                    // the park spot and pushed for 5 s until the follower timed out): close enough.
+                    Debug.log("compete: stopped %.1f in from %.0f, %.0f, close enough", togo, x, y);
+                    return Drive.ARRIVED;
                 }
                 window.reset();
                 windowDist = togo;
