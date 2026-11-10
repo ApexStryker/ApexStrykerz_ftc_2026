@@ -228,9 +228,10 @@ public final class Constants {
          * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs, then 1310 (-15).
          * 2026-11-07: NEAR 1295, picked in Launcher Tuner with our own speed loop (the wheel now
          * really holds the set speed; the old hub control swung about 1220-1380 around 1310).
+         * 2026-11-09: NEAR 1290 (-5): shots sometimes went slightly long.
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1295, 2300 };
+        public static final double[] PRESETS_TPS = { 1290, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
         /**
          * TeleOp: can the operator nudge the launcher speed with D-pad up / down (STEP_TPS a press)?
