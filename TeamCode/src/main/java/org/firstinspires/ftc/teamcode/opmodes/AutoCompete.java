@@ -246,6 +246,9 @@ public class AutoCompete extends LinearOpMode {
         follower.setFenceAround(fence, p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
         follower.start(new PathFollower.Waypoint(x, y, headingDeg));
         lastTarget = new double[] { x, y };
+        // A turn on the spot is not watched for a stall: the robot drifts a few inches while it
+        // turns and comes back, which looked like "stuck" (2026-11-09, the turn before parking).
+        boolean driving = Math.hypot(x - p.getX(DistanceUnit.INCH), y - p.getY(DistanceUnit.INCH)) > Constants.Compete.STALL_FAR_IN;
         ElapsedTime window = new ElapsedTime();
         double windowDist = Double.NaN;
         PathFollower.Result r = PathFollower.Result.RUNNING;
@@ -256,7 +259,7 @@ public class AutoCompete extends LinearOpMode {
             double togo = follower.distanceToGo();
             if (Double.isNaN(windowDist)) windowDist = togo;
             if (window.seconds() >= Constants.Compete.STALL_WINDOW_S) {
-                if (r == PathFollower.Result.RUNNING && togo > Constants.Compete.STALL_FAR_IN
+                if (driving && r == PathFollower.Result.RUNNING && togo > Constants.Compete.STALL_FAR_IN
                         && windowDist - togo < Constants.Compete.STALL_MIN_IN) {
                     follower.abort();
                     Debug.warn("compete: stuck %.1f in from %.0f, %.0f", togo, x, y);

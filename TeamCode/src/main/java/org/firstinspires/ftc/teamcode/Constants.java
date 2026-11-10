@@ -250,11 +250,13 @@ public final class Constants {
         public static final double MAX_TPS = 2800;
 
         /**
-         * Ready when within this many tps of target... 60 until 2026-11-07; 30 now that our loop
-         * holds the speed (readings come in steps of 20, so tighter would flicker), so the next
-         * ball waits out the short overshoot after each shot.
+         * Ready when within this many tps of target... 60 until 2026-11-07, then 30 once our loop
+         * held the speed, so the next ball waits out the short overshoot after each shot.
+         * 2026-11-09: 25. Readings come in steps of 20; at target 1290 a reading of 1320 (the tail
+         * of the overshoot) was exactly 30 and still counted as ready. 25 always accepts the two
+         * readings either side of the target and not the next one up.
          */
-        public static final double READY_TOLERANCE_TPS = 30;
+        public static final double READY_TOLERANCE_TPS = 25;
         /** ...continuously for this long. */
         public static final double READY_HOLD_MS = 120;
         /** A shot is detected when speed dips this far below target after a feed. */
