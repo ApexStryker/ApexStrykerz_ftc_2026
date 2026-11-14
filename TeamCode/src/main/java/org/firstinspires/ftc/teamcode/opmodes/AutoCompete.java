@@ -27,7 +27,7 @@ import java.util.List;
  *  3. Spin up; the windmill feeds while the wheel is at full speed and pauses after each shot.
  *  4. Drive to PARK_POSE in the Loading Zone, around the hive frame and flowers (util/FieldMap).
  *
- * Time: leaves for the Loading Zone PARK_RESERVE_S before the end of AUTO (at 20 s), even if not
+ * Time: leaves for the Loading Zone PARK_RESERVE_S before the end of AUTO (at 18 s), even if not
  * every ball is gone; earlier only once all the preloads are shot.
  * Bumps: if the robot stops getting closer (a robot or something else in the way), it backs off,
  * steps sideways, plans again and retries, up to MAX_RETRIES times.

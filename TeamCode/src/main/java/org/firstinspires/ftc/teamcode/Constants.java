@@ -587,7 +587,7 @@ public final class Constants {
         /**
          * "Auto Compete - wait 8 s": stand still this long before shooting, for matches where our
          * alliance partner shoots first (2026-11-14, first competition). The robot still leaves for
-         * the Loading Zone at the usual time (20 s), so about 11 s are left for the 4 balls.
+         * the Loading Zone at the usual time (18 s), so about 9 s are left for the 4 balls.
          */
         public static final double PARTNER_FIRST_WAIT_S = 8.0;
         /** ...and start the launcher this long before the wait ends, so it is at speed in time. */
@@ -595,11 +595,12 @@ public final class Constants {
         /**
          * Leave for the Loading Zone this many seconds before the end of AUTO, whatever the robot
          * is doing (waiting, shooting, fewer than 4 balls loaded). 2026-11-14, the team's rule at
-         * the first competition: at 20 s it heads back. Earlier only once all PRELOADS are shot.
+         * the first competition: at 18 s it heads back (first 10 s before the end, which was a bit
+         * tight for the drive). Earlier only once all PRELOADS are shot.
          * (Before: 8 s, or earlier if the estimated trip was longer, and feeding gave up after
          * FEED_MAX_S; with fewer than 4 balls the robot stood feeding until that ran out.)
          */
-        public static final double PARK_RESERVE_S = 10.0;
+        public static final double PARK_RESERVE_S = 12.0;
         /** Only to estimate the trip for the log: route length at this speed, plus the margin. */
         public static final double PARK_SPEED_IN_PER_S = 12.0;
         public static final double PARK_MARGIN_S = 2.0;
