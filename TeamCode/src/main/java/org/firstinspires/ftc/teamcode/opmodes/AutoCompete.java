@@ -27,8 +27,8 @@ import java.util.List;
  *  3. Spin up; the windmill feeds while the wheel is at full speed and pauses after each shot.
  *  4. Drive to PARK_POSE in the Loading Zone, around the hive frame and flowers (util/FieldMap).
  *
- * Time: leaves for the Loading Zone no later than PARK_RESERVE_S before the end of AUTO, or
- * earlier if the trip needs it, even if not every ball is gone.
+ * Time: leaves for the Loading Zone PARK_RESERVE_S before the end of AUTO (at 18 s), even if not
+ * every ball is gone; earlier only once all the preloads are shot.
  * Bumps: if the robot stops getting closer (a robot or something else in the way), it backs off,
  * steps sideways, plans again and retries, up to MAX_RETRIES times.
  *
@@ -173,8 +173,8 @@ public class AutoCompete extends LinearOpMode {
     /**
      * The windmill turns only while the wheel is at full speed, and pauses as soon as a ball goes
      * through (a dip of SHOT_DIP_TPS) until the wheel has recovered. If the wheel never gets up to
-     * speed in SHOOT_MAX_WAIT_S (low battery), feed anyway. Stops after PRELOADS shots, FEED_MAX_S,
-     * or the leave time.
+     * speed in SHOOT_MAX_WAIT_S (low battery), feed anyway. Stops after PRELOADS shots or at
+     * the leave time.
      */
     private void shoot() {
         step = "shooting";
@@ -191,10 +191,6 @@ public class AutoCompete extends LinearOpMode {
                     Debug.log("compete: feeding at %.0f tps", v);
                 }
             } else {
-                if (feeding.seconds() > Constants.Compete.FEED_MAX_S) {
-                    Debug.warn("compete: feeding time up after %d shots", shots);
-                    break;
-                }
                 if (!inDip && v < target - Constants.Compete.SHOT_DIP_TPS) {
                     inDip = true;               // a ball went through: pause until the wheel recovers
                     lowest = v;
@@ -241,7 +237,7 @@ public class AutoCompete extends LinearOpMode {
         }
     }
 
-    /** Leave for the Loading Zone at PARK_RESERVE_S before the end, or earlier if the trip is long. */
+    /** Leave for the Loading Zone PARK_RESERVE_S before the end, whatever is going on (the trip estimate is only logged). */
     private void planLeaveTime(double[] park) {
         Pose2D p = robot.localizer.getPose();
         double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
@@ -253,8 +249,8 @@ public class AutoCompete extends LinearOpMode {
             y = v[1];
         }
         double tripS = len / Constants.Compete.PARK_SPEED_IN_PER_S + Constants.Compete.PARK_MARGIN_S;
-        leaveAt = Constants.Compete.AUTO_LENGTH_S - Math.max(Constants.Compete.PARK_RESERVE_S, tripS);
-        Debug.log("compete: park trip about %.1f s, leave by %.1f s", tripS, leaveAt);
+        leaveAt = Constants.Compete.AUTO_LENGTH_S - Constants.Compete.PARK_RESERVE_S;
+        Debug.log("compete: park trip about %.1f s, leaving at %.1f s at the latest", tripS, leaveAt);
     }
 
     // ---- Driving -------------------------------------------------------------------------------
