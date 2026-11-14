@@ -50,7 +50,21 @@ public class AutoCompete extends LinearOpMode {
                 .setFlavor(OpModeMeta.Flavor.AUTONOMOUS)
                 .setTransitionTarget("Main TeleOp")
                 .build(), AutoCompete.class);
+        manager.register(new OpModeMeta.Builder()
+                .setName("Auto Compete - wait 8 s")
+                .setGroup("ApexStrykerz")
+                .setFlavor(OpModeMeta.Flavor.AUTONOMOUS)
+                .setTransitionTarget("Main TeleOp")
+                .build(), PartnerFirst.class);
     }
+
+    /** The same autonomous, but it stands still for PARTNER_FIRST_WAIT_S first: our partner shoots first. */
+    public static class PartnerFirst extends AutoCompete {
+        public PartnerFirst() { startDelayS = Constants.Compete.PARTNER_FIRST_WAIT_S; }
+    }
+
+    /** Seconds to stand still after START before shooting (0 = shoot straight away). */
+    protected double startDelayS = 0;
 
     /** How a drive ended. */
     private enum Drive { ARRIVED, BUMPED, UNSAFE, OUT_OF_TIME }
@@ -77,6 +91,7 @@ public class AutoCompete extends LinearOpMode {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
             telemetry.addLine("Either slot: intake against the side wall, launcher facing the hive");
+            if (startDelayS > 0) telemetry.addData("WAITS", "%.0f s before shooting (partner shoots first)", startDelayS);
             telemetry.addData("Start", "%.0f, %.0f, %.0f°", start[0], start[1], start[2]);
             telemetry.addData("Plan", "shoot %d at %.0f, %.0f, then park at %.0f, %.0f",
                     Constants.Compete.PRELOADS, shoot[0], shoot[1], park[0], park[1]);
@@ -89,8 +104,9 @@ public class AutoCompete extends LinearOpMode {
         match.reset();
         robot.setPose(start[0], start[1], start[2]);
         robot.launcher.selectPreset(Constants.Compete.SHOOT_PRESET);
-        robot.launcher.spinUp();    // spins up while driving to the shooting spot
         Debug.log("compete: start %.0f, %.0f, %.0f°", start[0], start[1], start[2]);
+        waitForPartner();
+        if (!robot.launcher.isEnabled()) robot.launcher.spinUp();    // spins up while driving to the shooting spot
 
         if (Math.hypot(shoot[0] - start[0], shoot[1] - start[1]) > Constants.Auto.POSITION_TOLERANCE_IN
                 || Math.abs(AngleUnit.normalizeDegrees(shoot[2] - start[2])) > Constants.Auto.HEADING_TOLERANCE_DEG) {
@@ -135,6 +151,20 @@ public class AutoCompete extends LinearOpMode {
             telemetry.addData("Done", "%d shots, %s", shots, inZone ? "PARKED" : "NOT in the Loading Zone");
             telemetry.update();
             idle();
+        }
+    }
+
+    /** Stand still for startDelayS; the launcher starts WAIT_SPINUP_LEAD_S before the end. */
+    private void waitForPartner() {
+        if (startDelayS <= 0) return;
+        step = "waiting for our partner";
+        Debug.log("compete: waiting %.0f s before shooting", startDelayS);
+        while (opModeIsActive() && match.seconds() < startDelayS) {
+            robot.updateManual();
+            if (!robot.launcher.isEnabled() && match.seconds() >= startDelayS - Constants.Compete.WAIT_SPINUP_LEAD_S) {
+                robot.launcher.spinUp();
+            }
+            show("shooting in %.1f s", startDelayS - match.seconds());
         }
     }
 

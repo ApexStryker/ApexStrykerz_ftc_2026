@@ -585,6 +585,14 @@ public final class Constants {
 
         /** AUTO is 30 s. */
         public static final double AUTO_LENGTH_S = 30.0;
+        /**
+         * "Auto Compete - wait 8 s": stand still this long before shooting, for matches where our
+         * alliance partner shoots first (2026-11-14, first competition). The robot still leaves for
+         * the Loading Zone at the usual time, so about 8 s are left for the 4 balls.
+         */
+        public static final double PARTNER_FIRST_WAIT_S = 8.0;
+        /** ...and start the launcher this long before the wait ends, so it is at speed in time. */
+        public static final double WAIT_SPINUP_LEAD_S = 1.5;
         /** Leave for the Loading Zone no later than this many seconds before the end... */
         public static final double PARK_RESERVE_S = 8.0;
         /** ...or earlier if the trip needs it: route length at this speed, plus the margin. */
