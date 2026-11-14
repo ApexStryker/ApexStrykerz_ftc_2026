@@ -229,10 +229,10 @@ public final class Constants {
          * 2026-11-07: NEAR 1295, picked in Launcher Tuner with our own speed loop (the wheel now
          * really holds the set speed; the old hub control swung about 1220-1380 around 1310).
          * 2026-11-09: NEAR 1290 (-5): shots sometimes went slightly long.
-         * 2026-11-14: NEAR 1280 at the first competition, then back to 1290 (1280 fell short).
+         * 2026-11-14: NEAR 1280 at the first competition, back to 1290 (1280 fell short), then 1295.
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1290, 2300 };
+        public static final double[] PRESETS_TPS = { 1295, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
         /**
          * TeleOp: can the operator nudge the launcher speed with D-pad up / down (STEP_TPS a press)?
@@ -559,11 +559,9 @@ public final class Constants {
          * goes through (the wheel dips SHOT_DIP_TPS below target), until the wheel is back within
          * READY_TOLERANCE_TPS. So every ball meets a full-speed wheel and none is skipped.
          * 2026-11-04: replaced single 280 ms quarter turns, which fired only 2 of 4 balls.
-         * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
+         * Stops after PRELOADS shots, or when it is time to leave (PARK_RESERVE_S), whichever comes first.
          */
         public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
-        /** 8 until 2026-11-09: the last ball sometimes needed longer, and there is time to spare. */
-        public static final double FEED_MAX_S = 12.0;
         /**
          * While the windmill turns, the intake pushes gently (Intake.FEED_POWER), as Launcher Tuner
          * does. 2026-11-09: without it the wheel ran 20-30 tps low for seconds at a time while
@@ -589,14 +587,20 @@ public final class Constants {
         /**
          * "Auto Compete - wait 8 s": stand still this long before shooting, for matches where our
          * alliance partner shoots first (2026-11-14, first competition). The robot still leaves for
-         * the Loading Zone at the usual time, so about 8 s are left for the 4 balls.
+         * the Loading Zone at the usual time (20 s), so about 11 s are left for the 4 balls.
          */
         public static final double PARTNER_FIRST_WAIT_S = 8.0;
         /** ...and start the launcher this long before the wait ends, so it is at speed in time. */
         public static final double WAIT_SPINUP_LEAD_S = 1.5;
-        /** Leave for the Loading Zone no later than this many seconds before the end... */
-        public static final double PARK_RESERVE_S = 8.0;
-        /** ...or earlier if the trip needs it: route length at this speed, plus the margin. */
+        /**
+         * Leave for the Loading Zone this many seconds before the end of AUTO, whatever the robot
+         * is doing (waiting, shooting, fewer than 4 balls loaded). 2026-11-14, the team's rule at
+         * the first competition: at 20 s it heads back. Earlier only once all PRELOADS are shot.
+         * (Before: 8 s, or earlier if the estimated trip was longer, and feeding gave up after
+         * FEED_MAX_S; with fewer than 4 balls the robot stood feeding until that ran out.)
+         */
+        public static final double PARK_RESERVE_S = 10.0;
+        /** Only to estimate the trip for the log: route length at this speed, plus the margin. */
         public static final double PARK_SPEED_IN_PER_S = 12.0;
         public static final double PARK_MARGIN_S = 2.0;
 
