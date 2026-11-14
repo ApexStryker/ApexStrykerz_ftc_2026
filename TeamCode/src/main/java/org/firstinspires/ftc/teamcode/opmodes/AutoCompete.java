@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeRegistrar;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -49,7 +50,21 @@ public class AutoCompete extends LinearOpMode {
                 .setFlavor(OpModeMeta.Flavor.AUTONOMOUS)
                 .setTransitionTarget("Main TeleOp")
                 .build(), AutoCompete.class);
+        manager.register(new OpModeMeta.Builder()
+                .setName("Auto Compete - wait 8 s")
+                .setGroup("ApexStrykerz")
+                .setFlavor(OpModeMeta.Flavor.AUTONOMOUS)
+                .setTransitionTarget("Main TeleOp")
+                .build(), PartnerFirst.class);
     }
+
+    /** The same autonomous, but it stands still for PARTNER_FIRST_WAIT_S first: our partner shoots first. */
+    public static class PartnerFirst extends AutoCompete {
+        public PartnerFirst() { startDelayS = Constants.Compete.PARTNER_FIRST_WAIT_S; }
+    }
+
+    /** Seconds to stand still after START before shooting (0 = shoot straight away). */
+    protected double startDelayS = 0;
 
     /** How a drive ended. */
     private enum Drive { ARRIVED, BUMPED, UNSAFE, OUT_OF_TIME }
@@ -76,6 +91,7 @@ public class AutoCompete extends LinearOpMode {
             telemetry.addData("Localizer", "%s  %s", robot.localizer.name(),
                     robot.localizer.isTrusted() ? "OK" : "NOT TRUSTED");
             telemetry.addLine("Either slot: intake against the side wall, launcher facing the hive");
+            if (startDelayS > 0) telemetry.addData("WAITS", "%.0f s before shooting (partner shoots first)", startDelayS);
             telemetry.addData("Start", "%.0f, %.0f, %.0f°", start[0], start[1], start[2]);
             telemetry.addData("Plan", "shoot %d at %.0f, %.0f, then park at %.0f, %.0f",
                     Constants.Compete.PRELOADS, shoot[0], shoot[1], park[0], park[1]);
@@ -88,8 +104,9 @@ public class AutoCompete extends LinearOpMode {
         match.reset();
         robot.setPose(start[0], start[1], start[2]);
         robot.launcher.selectPreset(Constants.Compete.SHOOT_PRESET);
-        robot.launcher.spinUp();    // spins up while driving to the shooting spot
         Debug.log("compete: start %.0f, %.0f, %.0f°", start[0], start[1], start[2]);
+        waitForPartner();
+        if (!robot.launcher.isEnabled()) robot.launcher.spinUp();    // spins up while driving to the shooting spot
 
         if (Math.hypot(shoot[0] - start[0], shoot[1] - start[1]) > Constants.Auto.POSITION_TOLERANCE_IN
                 || Math.abs(AngleUnit.normalizeDegrees(shoot[2] - start[2])) > Constants.Auto.HEADING_TOLERANCE_DEG) {
@@ -100,15 +117,30 @@ public class AutoCompete extends LinearOpMode {
         if (opModeIsActive() && match.seconds() < leaveAt) shoot();
         robot.windmill.hold();
         robot.launcher.stop();
+        checkPoseBeforeParking(shoot);
 
         step = "to the Loading Zone";
         Drive parked = Drive.ARRIVED;
-        for (double[] v : Constants.Compete.PARK_VIA) {
-            parked = driveTo(new double[] { v[0], v[1], park[2] }, false);
+        double[][] via = Constants.Compete.PARK_VIA;
+        double travel = Constants.Compete.PARK_TRAVEL_HEADING;
+        for (double[] v : via) {
+            parked = driveTo(new double[] { v[0], v[1], travel }, false);
             if (parked != Drive.ARRIVED) break;
         }
-        if (parked == Drive.BUMPED) Debug.warn("compete: could not follow the walls, going straight for the zone");
-        if (parked == Drive.ARRIVED || parked == Drive.BUMPED) parked = driveTo(park, false);
+        if (parked == Drive.BUMPED && via.length > 0) {
+            // Blocked on the way: let the planner find its own way to the end of the run, still
+            // at the travel heading (turning next to a wall or flower would clip it).
+            Debug.warn("compete: could not follow the walls, going straight for the end of the run");
+            double[] last = via[via.length - 1];
+            parked = driveTo(new double[] { last[0], last[1], travel }, false);
+        }
+        if (parked == Drive.ARRIVED) {
+            turnTo(park[2]);                      // out here, away from the walls
+            parked = driveTo(park, false);
+        } else if (parked == Drive.BUMPED) {
+            Debug.warn("compete: still blocked, into the zone without turning");
+            parked = driveTo(new double[] { park[0], park[1], travel }, false);
+        }
         if (parked == Drive.ARRIVED) squeezeAgainstWall();
         robot.stop();
         Pose2D p = robot.localizer.getPose();
@@ -119,6 +151,20 @@ public class AutoCompete extends LinearOpMode {
             telemetry.addData("Done", "%d shots, %s", shots, inZone ? "PARKED" : "NOT in the Loading Zone");
             telemetry.update();
             idle();
+        }
+    }
+
+    /** Stand still for startDelayS; the launcher starts WAIT_SPINUP_LEAD_S before the end. */
+    private void waitForPartner() {
+        if (startDelayS <= 0) return;
+        step = "waiting for our partner";
+        Debug.log("compete: waiting %.0f s before shooting", startDelayS);
+        while (opModeIsActive() && match.seconds() < startDelayS) {
+            robot.updateManual();
+            if (!robot.launcher.isEnabled() && match.seconds() >= startDelayS - Constants.Compete.WAIT_SPINUP_LEAD_S) {
+                robot.launcher.spinUp();
+            }
+            show("shooting in %.1f s", startDelayS - match.seconds());
         }
     }
 
@@ -138,7 +184,6 @@ public class AutoCompete extends LinearOpMode {
         while (opModeIsActive() && match.seconds() < leaveAt && shots < Constants.Compete.PRELOADS) {
             robot.updateManual();
             double v = robot.launcher.getVelocityTps(), target = robot.launcher.getTargetTps();
-            boolean ready = v >= target - Constants.Launcher.READY_TOLERANCE_TPS;
             if (!started) {
                 if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
                     started = true;
@@ -156,19 +201,44 @@ public class AutoCompete extends LinearOpMode {
                     waiting.reset();
                 } else if (inDip) {
                     lowest = Math.min(lowest, v);
-                    if (ready || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
+                    // Back to speed = settled within READY_TOLERANCE on both sides for READY_HOLD_MS,
+                    // not just past target - tolerance on the way up: right after a ball the wheel
+                    // runs about 50 tps fast for 0.3 s, and a ball fed then flies long (2026-11-07).
+                    if (robot.launcher.atSpeed() || waiting.seconds() >= Constants.Windmill.SHOOT_MAX_WAIT_S) {
                         inDip = false;
                         shots++;
                         Debug.log("compete: shot %d at %.1f s, wheel dipped to %.0f tps", shots, match.seconds(), lowest);
                     }
                 }
-                if (inDip) robot.windmill.hold();
-                else robot.windmill.run();
+                if (inDip) {
+                    robot.windmill.hold();
+                    robot.intake.stop();
+                } else {
+                    robot.windmill.run();
+                    if (Constants.Compete.INTAKE_PUSH_WHILE_FEEDING) robot.intake.feed();
+                }
             }
             show("%d of %d shots, launcher %.0f / %.0f tps", shots, Constants.Compete.PRELOADS, v, robot.launcher.getTargetTps());
         }
         robot.windmill.hold();
+        robot.intake.stop();
         if (match.seconds() >= leaveAt) Debug.warn("compete: out of time, leaving after %d shots", shots);
+    }
+
+    /**
+     * The robot stood still while shooting, so it must still be at the shooting spot. If the
+     * position says otherwise (Pinpoint reset or slipped), trust the shooting spot instead.
+     */
+    private void checkPoseBeforeParking(double[] shoot) {
+        robot.updateManual();
+        Pose2D p = robot.localizer.getPose();
+        double x = p.getX(DistanceUnit.INCH), y = p.getY(DistanceUnit.INCH);
+        double off = Math.hypot(x - shoot[0], y - shoot[1]);
+        if (off > Constants.Compete.POSE_CHECK_IN) {
+            Debug.warn("compete: position %.0f, %.0f is %.0f in from the shooting spot, reset to %.0f, %.0f",
+                    x, y, off, shoot[0], shoot[1]);
+            robot.setPose(shoot[0], shoot[1], shoot[2]);
+        }
     }
 
     /** Leave for the Loading Zone at PARK_RESERVE_S before the end, or earlier if the trip is long. */
@@ -222,6 +292,9 @@ public class AutoCompete extends LinearOpMode {
         follower.setFenceAround(fence, p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
         follower.start(new PathFollower.Waypoint(x, y, headingDeg));
         lastTarget = new double[] { x, y };
+        // A turn on the spot is not watched for a stall: the robot drifts a few inches while it
+        // turns and comes back, which looked like "stuck" (2026-11-09, the turn before parking).
+        boolean driving = Math.hypot(x - p.getX(DistanceUnit.INCH), y - p.getY(DistanceUnit.INCH)) > Constants.Compete.STALL_FAR_IN;
         ElapsedTime window = new ElapsedTime();
         double windowDist = Double.NaN;
         PathFollower.Result r = PathFollower.Result.RUNNING;
@@ -232,11 +305,16 @@ public class AutoCompete extends LinearOpMode {
             double togo = follower.distanceToGo();
             if (Double.isNaN(windowDist)) windowDist = togo;
             if (window.seconds() >= Constants.Compete.STALL_WINDOW_S) {
-                if (r == PathFollower.Result.RUNNING && togo > Constants.Compete.STALL_FAR_IN
-                        && windowDist - togo < Constants.Compete.STALL_MIN_IN) {
+                if (driving && r == PathFollower.Result.RUNNING && windowDist - togo < Constants.Compete.STALL_MIN_IN) {
                     follower.abort();
-                    Debug.warn("compete: stuck %.1f in from %.0f, %.0f", togo, x, y);
-                    return Drive.BUMPED;
+                    if (togo > Constants.Compete.STALL_FAR_IN) {
+                        Debug.warn("compete: stuck %.1f in from %.0f, %.0f", togo, x, y);
+                        return Drive.BUMPED;
+                    }
+                    // Not moving and nearly there (2026-11-09: backed into our wall 1.9 in short of
+                    // the park spot and pushed for 5 s until the follower timed out): close enough.
+                    Debug.log("compete: stopped %.1f in from %.0f, %.0f, close enough", togo, x, y);
+                    return Drive.ARRIVED;
                 }
                 window.reset();
                 windowDist = togo;
@@ -289,6 +367,34 @@ public class AutoCompete extends LinearOpMode {
             show("%s: %.1f in to go", what, follower.distanceToGo());
         }
         follower.abort();
+    }
+
+    /**
+     * Turn on the spot to a heading, with our own simple loop: only the heading is controlled.
+     * The PathFollower is not used for this: the robot (or its position reading) drifts 4-6 in
+     * during a quarter turn, which it took for "stuck" or RUNAWAY (2026-11-09). The next driveTo
+     * takes out whatever drift there was.
+     */
+    private void turnTo(double headingDeg) {
+        step = "turning";
+        ElapsedTime t = new ElapsedTime();
+        double err = 0;
+        while (opModeIsActive() && t.seconds() < Constants.Auto.TURN_TIMEOUT_S) {
+            robot.updateManual();
+            if (!robot.localizer.isTrusted()) break;
+            double h = robot.localizer.getHeading();
+            err = AngleUnit.normalizeDegrees(headingDeg - Math.toDegrees(h));
+            if (Math.abs(err) < Constants.Auto.TURN_TOLERANCE_DEG) break;
+            double turn = Range.clip(Math.abs(err) * Constants.Auto.TURN_KP,
+                    Constants.Auto.PATH_MIN_TURN_POWER, Constants.Auto.TURN_MAX_POWER);
+            // Heading error positive = still to turn left (counter-clockwise) = negative yaw.
+            robot.drive.driveFieldCentric(0, 0, -Math.signum(err) * turn, h, 1.0);
+            show("turning to %.0f°: %.0f° to go", headingDeg, err);
+        }
+        robot.drive.stop();
+        Pose2D p = robot.localizer.getPose();
+        Debug.log("compete: turned to %.0f° in %.1f s (%.0f° off), now at %.1f, %.1f", headingDeg, t.seconds(), err,
+                p.getX(DistanceUnit.INCH), p.getY(DistanceUnit.INCH));
     }
 
     /** Push gently toward our wall (field -x) for a moment, so the robot ends flat against it. */

@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.localization;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -28,6 +29,8 @@ public class PinpointLocalizer implements Localizer {
     public final boolean present;
     private final GoBildaPinpointDriver pinpoint;
     private GoBildaPinpointDriver.DeviceStatus lastStatus;
+    /** Time since the last resetPosAndIMU: its end zeroes the position (see setPose). */
+    private final ElapsedTime sinceReset = new ElapsedTime();
 
     public PinpointLocalizer(HardwareMap hw) {
         pinpoint = hw.tryGet(GoBildaPinpointDriver.class, Constants.Config.PINPOINT);
@@ -41,6 +44,7 @@ public class PinpointLocalizer implements Localizer {
         pinpoint.setEncoderResolution(Constants.Odometry.PINPOINT_POD);
         pinpoint.setEncoderDirections(Constants.Odometry.PINPOINT_X_DIR, Constants.Odometry.PINPOINT_Y_DIR);
         pinpoint.resetPosAndIMU();   // the robot must be still for about 0.25 s
+        sinceReset.reset();
         Debug.log("Pinpoint: pod %s, offsets A %.1f mm, B %.1f mm, directions %s/%s",
                 Constants.Odometry.PINPOINT_POD, Constants.Odometry.PINPOINT_X_POD_OFFSET_MM,
                 Constants.Odometry.PINPOINT_Y_POD_OFFSET_MM, Constants.Odometry.PINPOINT_X_DIR,
@@ -66,10 +70,30 @@ public class PinpointLocalizer implements Localizer {
 
     @Override
     public void setPose(Pose2D pose) {
-        if (present) {
+        if (!present) return;
+        // A reset still running would zero the position afterwards: wait for it to finish.
+        ElapsedTime waited = new ElapsedTime();
+        while (waited.milliseconds() < Constants.Odometry.PINPOINT_READY_WAIT_MS) {
+            pinpoint.update();
+            if (sinceReset.milliseconds() >= Constants.Odometry.PINPOINT_RESET_SETTLE_MS
+                    && pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY) break;
+            sleepMs(10);
+        }
+        if (waited.milliseconds() > 30) Debug.log("Pinpoint: waited %.0f ms for its reset before setting the pose", waited.milliseconds());
+        double wantX = pose.getX(DistanceUnit.INCH), wantY = pose.getY(DistanceUnit.INCH);
+        for (int attempt = 1; attempt <= 3; attempt++) {
             pinpoint.setPosition(pose);
             pinpoint.update();   // otherwise getPose() returns the old position until the next update
+            Pose2D got = pinpoint.getPosition();
+            double off = Math.hypot(got.getX(DistanceUnit.INCH) - wantX, got.getY(DistanceUnit.INCH) - wantY);
+            if (off < 1.0) return;
+            Debug.warn("Pinpoint: pose did not take (%.1f in off), try %d", off, attempt);
+            sleepMs(50);
         }
+    }
+
+    private static void sleepMs(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
     }
 
     @Override
@@ -106,6 +130,7 @@ public class PinpointLocalizer implements Localizer {
     public void resetPosAndIMU() {
         if (!present) return;
         pinpoint.resetPosAndIMU();
+        sinceReset.reset();
         Debug.log("Pinpoint: position and IMU reset");
     }
 

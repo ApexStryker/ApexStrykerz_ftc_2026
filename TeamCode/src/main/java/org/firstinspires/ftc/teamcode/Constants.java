@@ -151,6 +151,15 @@ public final class Constants {
 
         /** Drive-encoder pose is not trusted after this much travel since the last setPose. */
         public static final double MAX_TRUSTED_PATH_IN = 144.0;
+        /**
+         * The Pinpoint zeroes its position when it finishes the reset it does at every OpMode
+         * start (about 0.25 s). A start pose set before then is wiped: 2026-11-07, START was
+         * pressed 0.5 s after INIT and Auto Compete thought it was in the corner (0, 0) and did
+         * not drive. setPose waits until the reset is this old and the Pinpoint is READY...
+         */
+        public static final double PINPOINT_RESET_SETTLE_MS = 400;
+        /** ...but never longer than this, and setPose checks the position took. */
+        public static final double PINPOINT_READY_WAIT_MS = 1500;
 
         // ---- goBILDA Pinpoint (arrived 2026-10-19; see the Pinpoint slides in the deck) ----
         /**
@@ -217,27 +226,38 @@ public final class Constants {
          * 2026-10-12: about 1320 tps at 50% power, so full power is roughly 2600 tps.
          * 2026-11-02: NEAR set to 1250, the speed the team picked with the D-pad and shot at.
          * 2026-11-04: NEAR raised to 1325 (+75) after the first Auto Compete runs, then 1310 (-15).
+         * 2026-11-07: NEAR 1295, picked in Launcher Tuner with our own speed loop (the wheel now
+         * really holds the set speed; the old hub control swung about 1220-1380 around 1310).
+         * 2026-11-09: NEAR 1290 (-5): shots sometimes went slightly long.
+         * 2026-11-14: NEAR 1280 at the first competition, then back to 1290 (1280 fell short).
          * TODO: tune FAR with Launcher Tuner at the far shooting spot.
          */
-        public static final double[] PRESETS_TPS = { 1310, 2300 };
+        public static final double[] PRESETS_TPS = { 1290, 2300 };
         public static final String[] PRESET_NAMES = { "NEAR", "FAR" };
         /**
-         * Can the operator change speeds in TeleOp (D-pad up/down launcher, circle = other preset,
-         * D-pad right/left windmill)? 2026-11-04: OFF. TeleOp shoots at the NEAR preset, the same
-         * speed as Auto Compete, and the windmill at FEED_SPEED. Set true to tune again.
+         * TeleOp: can the operator nudge the launcher speed with D-pad up / down (STEP_TPS a press)?
+         * 2026-11-07: ON. TeleOp starts at the NEAR preset, the same speed as Auto Compete.
+         */
+        public static final boolean OPERATOR_DPAD_SPEED = true;
+        /**
+         * TeleOp: circle = other preset, D-pad right/left = windmill speed. 2026-11-04: OFF, the
+         * windmill stays at FEED_SPEED. Set true to tune again.
          */
         public static final boolean OPERATOR_SPEED_CHANGES = false;
 
-        /** Operator D-pad up / down: launcher speed step (was 100 until 2026-11-02). */
-        public static final double STEP_TPS = 80;
+        /** Operator D-pad up / down: launcher speed step (100 until 2026-11-02, 80 until 2026-11-07, then 25). */
+        public static final double STEP_TPS = 10;
         /** Top of the adjustable range: about full speed of a 6000 RPM motor (6000 x 28 / 60). */
         public static final double MAX_TPS = 2800;
 
         /**
-         * Ready when within this many tps of target... TODO(next session): once our loop holds the
-         * speed steadily, tighten to about 25 so every ball leaves at nearly the same speed.
+         * Ready when within this many tps of target... 60 until 2026-11-07, then 30 once our loop
+         * held the speed, so the next ball waits out the short overshoot after each shot.
+         * 2026-11-09: 25. Readings come in steps of 20; at target 1290 a reading of 1320 (the tail
+         * of the overshoot) was exactly 30 and still counted as ready. 25 always accepts the two
+         * readings either side of the target and not the next one up.
          */
-        public static final double READY_TOLERANCE_TPS = 60;
+        public static final double READY_TOLERANCE_TPS = 25;
         /** ...continuously for this long. */
         public static final double READY_HOLD_MS = 120;
         /** A shot is detected when speed dips this far below target after a feed. */
@@ -254,13 +274,13 @@ public final class Constants {
         /**
          * Our loop's gains. Power = (KS + KV x target) x NOMINAL_VOLTS / battery + KP x error + KI x
          * (sum of error x seconds), with error = target - actual in tps.
-         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. Starting value from
-         * the 2026-10-12 note (about 1320 tps at 50% power): KV ≈ 0.5 / 1320. TODO(next session):
-         * run "Calibrate" in Launcher Tuner (triangle) and copy the KV and KS it logs here.
-         * KP, KI: TODO(next session): tune in Launcher Tuner, watching the speed hold steady and
-         * recover quickly after each ball.
+         * KV, KS: base power per tps and to overcome friction, at NOMINAL_VOLTS. 2026-11-07: from
+         * Launcher Tuner "Calibrate" (874 tps at 0.35 power, 1666 tps at 0.65, battery 12.7 V).
+         * KP, KI: 2026-11-07, checked in Launcher Tuner: holds within one encoder reading (+/-10
+         * tps) of target, back to speed about 0.1-0.2 s after each ball, about +50 overshoot
+         * for 0.3 s after.
          */
-        public static final double KV = 0.00038, KS = 0.0;
+        public static final double KV = 0.000398, KS = 0.0232;
         public static final double KP = 0.002, KI = 0.002;
         /** The most the KI term may add or remove, as motor power (stops wind-up). */
         public static final double I_LIMIT = 0.1;
@@ -514,14 +534,22 @@ public final class Constants {
          *  1. along the right-hand wall to the corner by our wall;
          *  2. straight along our wall (the team's "96 in" run) with the robot's side 12 in off the
          *     wall, which clears the 10 in flower on it by 2 in;
-         *  3. in against our wall at the Loading Zone.
+         *  3. turn on the spot to PARK_POSE's heading (out here, clear of walls and flowers: a
+         *     turning 18 in robot reaches 12.7 in from its centre);
+         *  4. in against our wall at the Loading Zone.
+         * 2026-11-09: run end 108 -> 120 (one foot further along our wall), then 114 (6 in further).
          */
-        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 108 } };
+        public static final double[][] PARK_VIA = { { 21, 12 }, { 21, 114 } };
+        /** Heading while driving the PARK_VIA legs: the same as shooting, so no turn near walls. */
+        public static final double PARK_TRAVEL_HEADING = -90;
         /**
-         * Where to park ("2" on the team's sketch): 1 in off our wall, in the middle of the Loading
-         * Zone (y 96-119), so the whole robot is inside even if odometry is a few inches off.
+         * Where to park ("2" on the team's sketch): 1 in off our wall.
+         * 2026-11-09: further along the wall (y 108 -> 120 -> 114, the team's call after watching it)
+         * and facing the arena: heading 0 = intake out toward the field, launcher (back) against our
+         * wall (was -90, side on). Our map's Loading Zone is y 96-119; at y 114 the robot covers
+         * y 105-123.
          */
-        public static final double[] PARK_POSE = { 10, 108, -90 };
+        public static final double[] PARK_POSE = { 10, 114, 0 };
 
         public static final int PRELOADS = 4;
         /** Launcher preset for the shots (0 = NEAR). */
@@ -534,7 +562,21 @@ public final class Constants {
          * Stops after PRELOADS shots or FEED_MAX_S, whichever comes first.
          */
         public static final double SHOT_DIP_TPS = Windmill.PAUSE_DIP_TPS;
-        public static final double FEED_MAX_S = 8.0;
+        /** 8 until 2026-11-09: the last ball sometimes needed longer, and there is time to spare. */
+        public static final double FEED_MAX_S = 12.0;
+        /**
+         * While the windmill turns, the intake pushes gently (Intake.FEED_POWER), as Launcher Tuner
+         * does. 2026-11-09: without it the wheel ran 20-30 tps low for seconds at a time while
+         * feeding (a ball rubbing on it without going through) and the 3rd / 4th ball came late
+         * or never. false = windmill only, as before.
+         */
+        public static final boolean INTAKE_PUSH_WHILE_FEEDING = true;
+        /**
+         * The robot does not drive while shooting, so before parking its position should still be
+         * the shooting spot. Further off than this (the Pinpoint was reset or slipped): log it and
+         * put it back to the shooting spot.
+         */
+        public static final double POSE_CHECK_IN = 6.0;
         /**
          * At the end, push gently sideways against our wall for this long, so the robot finishes
          * flat against it (odometry alone left it a few inches off).
@@ -544,6 +586,14 @@ public final class Constants {
 
         /** AUTO is 30 s. */
         public static final double AUTO_LENGTH_S = 30.0;
+        /**
+         * "Auto Compete - wait 8 s": stand still this long before shooting, for matches where our
+         * alliance partner shoots first (2026-11-14, first competition). The robot still leaves for
+         * the Loading Zone at the usual time, so about 8 s are left for the 4 balls.
+         */
+        public static final double PARTNER_FIRST_WAIT_S = 8.0;
+        /** ...and start the launcher this long before the wait ends, so it is at speed in time. */
+        public static final double WAIT_SPINUP_LEAD_S = 1.5;
         /** Leave for the Loading Zone no later than this many seconds before the end... */
         public static final double PARK_RESERVE_S = 8.0;
         /** ...or earlier if the trip needs it: route length at this speed, plus the margin. */
